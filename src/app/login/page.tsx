@@ -42,10 +42,6 @@ export default function LoginPage() {
         <h1 className="text-xl font-bold">
           {mode === "login" ? "Sign in" : "Create account"}
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Sign in to use your blueprint credits. Credits are issued after you accept a quote
-          and pay by bank transfer.
-        </p>
         <input
           type="email"
           value={email}

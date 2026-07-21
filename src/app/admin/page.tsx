@@ -336,6 +336,10 @@ export default function AdminPage() {
           }}
           className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
         >
+          <div className="mb-4 flex justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="IndusBrain" className="h-14 w-auto" />
+          </div>
           <h1 className="text-xl font-bold">IndusBrain Admin</h1>
           <p className="mt-1 text-sm text-slate-500">Enter the admin access code.</p>
           <input
@@ -360,7 +364,11 @@ export default function AdminPage() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-5xl px-4 py-10">
-        <h1 className="text-2xl font-bold">IndusBrain Admin</h1>
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-mark.svg" alt="IndusBrain" className="h-9 w-9" />
+          <h1 className="text-2xl font-bold">IndusBrain Admin</h1>
+        </div>
         <div className="mt-4 flex gap-2">
           {(["industries", "quotes", "users", "companies", "outreach", "apikeys", "alerts", "audit", "credits"] as const).map((t) => (
             <button

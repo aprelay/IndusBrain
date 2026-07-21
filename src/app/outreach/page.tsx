@@ -106,7 +106,11 @@ export default function OutreachPage() {
       <div className="mx-auto max-w-4xl px-4 py-10">
         <header className="mb-8">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold tracking-tight">Outreach</h1>
+            <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-mark.svg" alt="IndusBrain" className="h-10 w-10" />
+              <h1 className="text-3xl font-bold tracking-tight">Outreach</h1>
+            </div>
             <nav className="flex gap-4 text-sm">
               <a href="/ideas" className="text-blue-600 hover:underline">
                 💡 Idea Engine
