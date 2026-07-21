@@ -43,6 +43,7 @@ function toPreview(report: IdeaReport): IdeaReport {
       capitalRequired: "",
       unitEconomics: "",
       confidence: "",
+      opportunityScore: 0,
       regulatoryPath: [],
       goToMarket: [],
       ecosystemNeeded: [],

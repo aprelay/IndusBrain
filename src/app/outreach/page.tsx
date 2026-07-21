@@ -45,6 +45,10 @@ export default function OutreachPage() {
       .then((r) => r.json())
       .then(setStats)
       .catch(() => {});
+    const preset = new URLSearchParams(window.location.search).get("industry");
+    if (preset && (OUTREACH_INDUSTRIES as readonly string[]).includes(preset.toLowerCase())) {
+      setIndustry(preset.toLowerCase());
+    }
   }, []);
 
   const search = useCallback(

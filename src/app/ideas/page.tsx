@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IdeaReport, ideaReportToMarkdown } from "@/lib/ideas";
+import { IdeaDeepDive, IdeaReport, deepDiveToMarkdown, ideaReportToMarkdown } from "@/lib/ideas";
 
 type LockedReport = IdeaReport & { locked?: boolean };
 
@@ -96,6 +96,9 @@ export default function IdeasPage() {
   const [report, setReport] = useState<LockedReport | null>(null);
   const [saved, setSaved] = useState<SavedIdeaMeta[]>([]);
   const [insights, setInsights] = useState<BrainInsights | null>(null);
+  const [deepDive, setDeepDive] = useState<IdeaDeepDive | null>(null);
+  const [deepDiveFor, setDeepDiveFor] = useState<string | null>(null);
+  const [deepDiveError, setDeepDiveError] = useState<string | null>(null);
 
   async function loadSaved() {
     try {
@@ -123,8 +126,43 @@ export default function IdeasPage() {
   async function openSaved(id: number) {
     const res = await fetch(`/api/my/ideas?id=${id}`);
     if (res.ok) {
-      setReport(await res.json());
+      const data = await res.json();
+      if (Array.isArray(data?.ideas)) {
+        setReport(data);
+        setDeepDive(null);
+      } else if (Array.isArray(data?.phases)) {
+        setDeepDive(data);
+      }
       window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  async function goDeeper(idea: { name: string; concept: string }) {
+    setDeepDiveFor(idea.name);
+    setDeepDiveError(null);
+    try {
+      const res = await fetch("/api/ideas/deepdive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: idea.name,
+          concept: idea.concept,
+          country: report?.country,
+          brief: report?.brief,
+          accessCode: accessCode || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to generate deep dive");
+      setDeepDive(data);
+      loadSaved();
+      setTimeout(() => {
+        document.getElementById("deep-dive")?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    } catch (err) {
+      setDeepDiveError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setDeepDiveFor(null);
     }
   }
 
@@ -302,11 +340,18 @@ export default function IdeasPage() {
                     <h3 className="text-lg font-bold">
                       {n + 1}. {idea.name}
                     </h3>
+                    <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                    {idea.opportunityScore > 0 && (
+                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                        Opportunity: {idea.opportunityScore}/100
+                      </span>
+                    )}
                     {idea.confidence && (
                       <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
                         Confidence: {idea.confidence}
                       </span>
                     )}
+                    </div>
                   </div>
                   <p className="mt-2 text-slate-700">{idea.concept}</p>
                   <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
@@ -324,8 +369,98 @@ export default function IdeasPage() {
                   <ListBlock label="Key risks" items={idea.risks} />
                   <ListBlock label="Key assumptions" items={idea.assumptions} />
                   <ListBlock label="First steps" items={idea.firstSteps} ordered />
+                  {!report.locked && (
+                    <button
+                      onClick={() => goDeeper(idea)}
+                      disabled={deepDiveFor !== null}
+                      className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      {deepDiveFor === idea.name
+                        ? "Building execution playbook…"
+                        : "🔍 Go deeper — full execution playbook"}
+                    </button>
+                  )}
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {deepDiveError && (
+          <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-red-700">{deepDiveError}</p>
+        )}
+
+        {deepDive && (
+          <section id="deep-dive" className="mt-10">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xl font-semibold">
+                Execution deep dive: {deepDive.ideaName}
+              </h2>
+              <button
+                onClick={() =>
+                  downloadFile(deepDiveToMarkdown(deepDive), "execution-deep-dive.md", "text/markdown")
+                }
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
+              >
+                Download
+              </button>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              {deepDive.overview && <p className="text-slate-700">{deepDive.overview}</p>}
+              <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                <Field label="Overall timeline" value={deepDive.timeline} />
+                <Field label="Capital plan" value={deepDive.capitalPlan} />
+              </div>
+              <div className="mt-6 space-y-6">
+                {deepDive.phases.map((p) => (
+                  <div key={p.name} className="rounded-lg border border-slate-200 p-4">
+                    <h3 className="font-bold">{p.name}</h3>
+                    {p.objective && <p className="mt-1 text-sm italic text-slate-600">{p.objective}</p>}
+                    <div className="mt-3 space-y-4">
+                      {p.steps.map((s, k) => (
+                        <div key={s.step} className="border-l-2 border-emerald-500 pl-3">
+                          <p className="text-sm font-semibold">
+                            {k + 1}. {s.step}
+                          </p>
+                          {s.detail && <p className="mt-1 text-sm text-slate-600">{s.detail}</p>}
+                          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                            {s.whoYouPay && <span>💼 Who you pay: {s.whoYouPay}</span>}
+                            {s.typicalCost && <span>💰 {s.typicalCost}</span>}
+                            {s.duration && <span>⏱ {s.duration}</span>}
+                          </div>
+                          {s.permits.length > 0 && (
+                            <p className="mt-1 text-xs text-amber-700">
+                              📋 Permits: {s.permits.join("; ")}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <ListBlock label="Permit & approval checklist" items={deepDive.permitChecklist} ordered />
+              <ListBlock label="Success metrics" items={deepDive.successMetrics} />
+              {deepDive.outreachIndustries.length > 0 && (
+                <div className="mt-4 text-sm">
+                  <span className="font-semibold">Companies to contact (Outreach)</span>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {deepDive.outreachIndustries.map((ind) => (
+                      <a
+                        key={ind}
+                        href={`/outreach?industry=${encodeURIComponent(ind)}`}
+                        className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium capitalize text-blue-700 hover:bg-blue-100"
+                      >
+                        📡 {ind} companies →
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="mt-4 text-xs text-slate-500">
+                AI-generated execution playbook — verify costs, permits and regulators locally
+                before committing capital.
+              </p>
             </div>
           </section>
         )}
