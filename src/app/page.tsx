@@ -268,7 +268,9 @@ export default function Home() {
       <div className="mx-auto max-w-5xl px-4 py-10">
         <header className="mb-8 print:hidden">
           <div className="flex items-center justify-between">
-            <div className="flex items-baseline gap-4">
+            <div className="flex items-center gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-mark.svg" alt="IndusBrain" className="h-10 w-10" />
               <h1 className="text-3xl font-bold tracking-tight">Industry Ecosystem Brain</h1>
               <a href="/ideas" className="text-sm font-semibold text-blue-600 hover:underline">
                 💡 Idea Engine

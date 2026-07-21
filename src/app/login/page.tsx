@@ -35,6 +35,10 @@ export default function LoginPage() {
         onSubmit={submit}
         className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
       >
+        <a href="/" className="mb-4 flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="IndusBrain — Industry Ecosystem Intelligence" className="h-16 w-auto" />
+        </a>
         <h1 className="text-xl font-bold">
           {mode === "login" ? "Sign in" : "Create account"}
         </h1>
