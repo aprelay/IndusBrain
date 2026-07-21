@@ -7,6 +7,7 @@ import {
   saveIdeaReport,
 } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { buildMemoryContext, rememberIdeaReport } from "@/lib/brain";
 
 const MAX_REQUEST_LENGTH = 500;
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -73,7 +74,8 @@ export async function POST(req: NextRequest) {
     );
   }
   const country = typeof body?.country === "string" ? body.country.trim().slice(0, 60) : "";
-  const report = await generateIdeas(brief, country || undefined);
+  const memoryContext = buildMemoryContext(brief);
+  const report = await generateIdeas(brief, country || undefined, memoryContext || undefined);
   if (!report) {
     return NextResponse.json(
       { error: "Idea Engine unavailable — AI is not configured or the request failed" },
@@ -86,6 +88,7 @@ export async function POST(req: NextRequest) {
     source: "ideas",
     ip,
   });
+  rememberIdeaReport(report);
 
   const user = getSessionUser(req);
   const billingEnabled = process.env.BILLING_ENABLED === "true";

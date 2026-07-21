@@ -59,13 +59,15 @@ function asString(v: unknown): string {
 
 export async function generateIdeas(
   brief: string,
-  country?: string
+  country?: string,
+  memoryContext?: string
 ): Promise<IdeaReport | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
-  const userContent = country
+  const base = country
     ? `${brief}\n\nTarget jurisdiction: ${country}. Ground the ideas in the market realities, regulators and gaps of ${country}, and name that jurisdiction's actual regulators in regulatoryPath.`
     : brief;
+  const userContent = memoryContext ? `${base}${memoryContext}` : base;
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",

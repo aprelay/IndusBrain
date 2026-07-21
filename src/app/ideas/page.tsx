@@ -11,6 +11,12 @@ interface SavedIdeaMeta {
   createdAt: string;
 }
 
+interface BrainInsights {
+  memoryCount: number;
+  trendingTopics: { topic: string; count: number }[];
+  trendingCountries: { country: string; count: number }[];
+}
+
 const COUNTRIES = [
   "Nigeria", "Ghana", "Kenya", "South Africa", "Egypt", "Côte d'Ivoire", "Senegal",
   "Tanzania", "Uganda", "Rwanda", "Ethiopia", "Cameroon", "Benin", "Togo", "Niger Republic",
@@ -89,6 +95,7 @@ export default function IdeasPage() {
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<LockedReport | null>(null);
   const [saved, setSaved] = useState<SavedIdeaMeta[]>([]);
+  const [insights, setInsights] = useState<BrainInsights | null>(null);
 
   async function loadSaved() {
     try {
@@ -101,6 +108,10 @@ export default function IdeasPage() {
 
   useEffect(() => {
     loadSaved();
+    fetch("/api/insights")
+      .then((r) => r.json())
+      .then(setInsights)
+      .catch(() => {});
   }, []);
 
   async function openSaved(id: number) {
@@ -158,6 +169,32 @@ export default function IdeasPage() {
             signals, competitive landscape, capital, unit economics, regulatory path and
             go-to-market.
           </p>
+          {insights && insights.memoryCount > 0 && (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm">
+              <span className="font-semibold">
+                🧠 The brain has learned from {insights.memoryCount.toLocaleString()}{" "}
+                requests and ideas
+              </span>
+              {insights.trendingTopics.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {insights.trendingTopics.map((t) => (
+                    <button
+                      key={t.topic}
+                      onClick={() => setBrief((b) => (b ? `${b} ${t.topic}` : t.topic))}
+                      className="rounded-full bg-slate-100 px-3 py-1 text-xs capitalize text-slate-600 hover:bg-blue-100"
+                      title={`Seen in ${t.count} briefs — click to add to your brief`}
+                    >
+                      {t.topic} · {t.count}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="mt-2 text-xs text-slate-500">
+                Every search and generated idea feeds the brain’s memory — new ideas build on
+                what it has already learned.
+              </p>
+            </div>
+          )}
         </header>
 
         <form onSubmit={generate} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

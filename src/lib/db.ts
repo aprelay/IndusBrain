@@ -87,6 +87,15 @@ function getDb(): Database.Database {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_outreach_industry ON outreach_domains(industry);
+    CREATE TABLE IF NOT EXISTS brain_memory (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kind TEXT NOT NULL,
+      brief TEXT NOT NULL,
+      country TEXT NOT NULL DEFAULT '',
+      title TEXT NOT NULL DEFAULT '',
+      summary TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
     CREATE TABLE IF NOT EXISTS audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       request TEXT NOT NULL,
@@ -546,6 +555,52 @@ export function outreachIndustryStats(): { industry: string; count: number }[] {
       "SELECT industry, COUNT(*) AS count FROM outreach_domains GROUP BY industry ORDER BY count DESC"
     )
     .all() as { industry: string; count: number }[];
+}
+
+export interface BrainMemoryRow {
+  id: number;
+  kind: string;
+  brief: string;
+  country: string;
+  title: string;
+  summary: string;
+  createdAt: string;
+}
+
+export function recordBrainMemory(
+  entries: { kind: string; brief: string; country?: string; title?: string; summary?: string }[]
+): void {
+  const d = getDb();
+  const insert = d.prepare(
+    "INSERT INTO brain_memory (kind, brief, country, title, summary) VALUES (?, ?, ?, ?, ?)"
+  );
+  const tx = d.transaction((items: typeof entries) => {
+    for (const e of items) {
+      insert.run(e.kind, e.brief, e.country || "", e.title || "", e.summary || "");
+    }
+  });
+  tx(entries);
+}
+
+export function listRecentBrainMemory(limit = 500): BrainMemoryRow[] {
+  const rows = getDb()
+    .prepare(
+      "SELECT id, kind, brief, country, title, summary, created_at FROM brain_memory ORDER BY id DESC LIMIT ?"
+    )
+    .all(limit) as {
+    id: number;
+    kind: string;
+    brief: string;
+    country: string;
+    title: string;
+    summary: string;
+    created_at: string;
+  }[];
+  return rows.map((r) => ({ ...r, createdAt: r.created_at }));
+}
+
+export function countBrainMemory(): number {
+  return (getDb().prepare("SELECT COUNT(*) AS n FROM brain_memory").get() as { n: number }).n;
 }
 
 export function deleteOutreachIndustry(industry: string): number {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateBlueprint } from "@/lib/generate";
 import { consumeCredit, consumeUserCredit, logBlueprintRequest, saveBlueprint } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { rememberBlueprint } from "@/lib/brain";
 import { Blueprint } from "@/lib/types";
 
 const MAX_REQUEST_LENGTH = 500;
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
     source: blueprint.source,
     ip,
   });
+  rememberBlueprint(request, blueprint.industry, country || undefined);
 
   const user = getSessionUser(req);
   const billingEnabled = process.env.BILLING_ENABLED === "true";
