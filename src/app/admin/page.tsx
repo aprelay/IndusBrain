@@ -284,7 +284,7 @@ export default function AdminPage() {
 
   async function reclassifyUnclassified() {
     setUploading(true);
-    setStatus("Reclassifying… keyword pass + AI pass (up to 400 domains per run)");
+    setStatus("Reclassifying… keyword pass + reading each website (up to 200 domains per run)");
     try {
       const res = await fetch("/api/admin/outreach/reclassify", {
         method: "POST",
@@ -293,7 +293,7 @@ export default function AdminPage() {
       const data = await res.json();
       setStatus(
         res.ok
-          ? `Processed ${data.processed} — reclassified ${data.reclassified} (${data.byKeywords} by keywords, ${data.byAI} by AI). ${data.remaining === 0 ? "All done." : "More remaining — click again to continue."}`
+          ? `Processed ${data.processed} — reclassified ${data.reclassified} (${data.byKeywords} by keywords, ${data.byWebsite} from website content). ${data.remaining === 0 ? "All done." : "More remaining — click again to continue."}`
           : data.error || "Reclassify failed"
       );
       if (res.ok) loadAll();
@@ -504,7 +504,7 @@ export default function AdminPage() {
                     disabled={uploading}
                     className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                   >
-                    {uploading ? "Working…" : "🧠 Reclassify unclassified (AI)"}
+                    {uploading ? "Working…" : "🔎 Reclassify unclassified"}
                   </button>
                 )}
               </div>

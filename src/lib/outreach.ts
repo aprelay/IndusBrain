@@ -100,6 +100,85 @@ export function classifyDomain(domain: string): string {
   return best;
 }
 
+export function classifyText(text: string): string {
+  const hay = text.toLowerCase();
+  let best = "unclassified";
+  let bestScore = 0;
+  for (const [industry, keywords] of KEYWORD_MAP) {
+    let score = 0;
+    for (const k of keywords) {
+      if (k.length >= 4 && hay.includes(k)) score += k.length;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = industry;
+    }
+  }
+  return best;
+}
+
+const FETCH_TIMEOUT_MS = 6000;
+const MAX_HTML_BYTES = 60000;
+
+async function fetchSiteText(domain: string): Promise<string | null> {
+  for (const proto of ["https", "http"]) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      const res = await fetch(`${proto}://${domain}/`, {
+        signal: controller.signal,
+        redirect: "follow",
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; IndusBrainBot/1.0)" },
+      });
+      clearTimeout(timer);
+      if (!res.ok) continue;
+      const reader = res.body?.getReader();
+      if (!reader) continue;
+      let html = "";
+      while (html.length < MAX_HTML_BYTES) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        html += new TextDecoder().decode(value);
+      }
+      reader.cancel().catch(() => {});
+      const title = /<title[^>]*>([^<]*)<\/title>/i.exec(html)?.[1] || "";
+      const desc =
+        /<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i.exec(html)?.[1] ||
+        /<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["']/i.exec(html)?.[1] ||
+        "";
+      const keywords =
+        /<meta[^>]+name=["']keywords["'][^>]+content=["']([^"']*)["']/i.exec(html)?.[1] || "";
+      const h1 = /<h1[^>]*>([^<]*)<\/h1>/i.exec(html)?.[1] || "";
+      const text = `${title} ${desc} ${keywords} ${h1}`.trim();
+      return text || null;
+    } catch {
+      // try next protocol
+    }
+  }
+  return null;
+}
+
+const SITE_CONCURRENCY = 20;
+
+export async function classifyDomainsByWebsite(
+  domains: string[]
+): Promise<{ results: Map<string, string>; attempted: string[] }> {
+  const results = new Map<string, string>();
+  const attempted: string[] = [];
+  for (let i = 0; i < domains.length; i += SITE_CONCURRENCY) {
+    const batch = domains.slice(i, i + SITE_CONCURRENCY);
+    const texts = await Promise.all(batch.map((d) => fetchSiteText(d)));
+    for (let j = 0; j < batch.length; j++) {
+      attempted.push(batch[j]);
+      const text = texts[j];
+      if (!text) continue;
+      const industry = classifyText(text);
+      if (industry !== "unclassified") results.set(batch[j], industry);
+    }
+  }
+  return { results, attempted };
+}
+
 const AI_BATCH_SIZE = 80;
 
 export async function classifyDomainsWithAI(
