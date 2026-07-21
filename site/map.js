@@ -95,9 +95,9 @@
     ctx.clearRect(0, 0, w, h);
 
     // land dots
-    ctx.fillStyle = "rgba(79, 140, 255, 0.28)";
+    ctx.fillStyle = "rgba(105, 160, 255, 0.55)";
     for (var i = 0; i < landDots.length; i++) {
-      ctx.fillRect(landDots[i][0], landDots[i][1], 1.6, 1.6);
+      ctx.fillRect(landDots[i][0], landDots[i][1], 1.8, 1.8);
     }
 
     if (now - lastSpawn > 1400 && ideas.length < MAX_IDEAS) {
