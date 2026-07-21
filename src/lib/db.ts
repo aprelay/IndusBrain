@@ -73,6 +73,20 @@ function getDb(): Database.Database {
       credits INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS saved_ideas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      data TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS outreach_domains (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      domain TEXT NOT NULL UNIQUE,
+      industry TEXT NOT NULL DEFAULT 'unclassified',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_outreach_industry ON outreach_domains(industry);
     CREATE TABLE IF NOT EXISTS audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       request TEXT NOT NULL,
@@ -447,4 +461,95 @@ export function consumeApiKeyCredit(key: string): boolean {
       .prepare("UPDATE api_keys SET credits = credits - 1 WHERE key = ? AND credits > 0")
       .run(key).changes > 0
   );
+}
+
+export function saveIdeaReport(userId: number, title: string, data: string): number {
+  const info = getDb()
+    .prepare("INSERT INTO saved_ideas (user_id, title, data) VALUES (?, ?, ?)")
+    .run(userId, title, data);
+  return Number(info.lastInsertRowid);
+}
+
+export function listSavedIdeas(userId: number): SavedBlueprintMeta[] {
+  const rows = getDb()
+    .prepare(
+      "SELECT id, title, created_at FROM saved_ideas WHERE user_id = ? ORDER BY id DESC"
+    )
+    .all(userId) as { id: number; title: string; created_at: string }[];
+  return rows.map((r) => ({ id: r.id, title: r.title, createdAt: r.created_at }));
+}
+
+export function getSavedIdea(userId: number, id: number): string | null {
+  const row = getDb()
+    .prepare("SELECT data FROM saved_ideas WHERE id = ? AND user_id = ?")
+    .get(id, userId) as { data: string } | undefined;
+  return row ? row.data : null;
+}
+
+export interface OutreachDomain {
+  id: number;
+  domain: string;
+  industry: string;
+}
+
+export function bulkInsertOutreachDomains(
+  entries: { domain: string; industry: string }[]
+): number {
+  const d = getDb();
+  const insert = d.prepare(
+    "INSERT OR IGNORE INTO outreach_domains (domain, industry) VALUES (?, ?)"
+  );
+  let added = 0;
+  const tx = d.transaction((items: { domain: string; industry: string }[]) => {
+    for (const e of items) {
+      added += insert.run(e.domain, e.industry).changes;
+    }
+  });
+  tx(entries);
+  return added;
+}
+
+export function searchOutreachDomains(
+  industry: string,
+  query: string,
+  page: number,
+  perPage = 50
+): { total: number; domains: OutreachDomain[] } {
+  const d = getDb();
+  const clauses: string[] = [];
+  const params: string[] = [];
+  if (industry) {
+    clauses.push("industry = ?");
+    params.push(industry);
+  }
+  if (query) {
+    clauses.push("domain LIKE ?");
+    params.push(`%${query}%`);
+  }
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const total = (
+    d.prepare(`SELECT COUNT(*) AS n FROM outreach_domains ${where}`).get(...params) as {
+      n: number;
+    }
+  ).n;
+  const domains = d
+    .prepare(
+      `SELECT id, domain, industry FROM outreach_domains ${where} ORDER BY domain LIMIT ? OFFSET ?`
+    )
+    .all(...params, perPage, Math.max(0, page - 1) * perPage) as OutreachDomain[];
+  return { total, domains };
+}
+
+export function outreachIndustryStats(): { industry: string; count: number }[] {
+  return getDb()
+    .prepare(
+      "SELECT industry, COUNT(*) AS count FROM outreach_domains GROUP BY industry ORDER BY count DESC"
+    )
+    .all() as { industry: string; count: number }[];
+}
+
+export function deleteOutreachIndustry(industry: string): number {
+  return getDb()
+    .prepare("DELETE FROM outreach_domains WHERE industry = ?")
+    .run(industry).changes;
 }

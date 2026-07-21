@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AuditEntry, IndustryTemplate } from "@/lib/types";
+import { OUTREACH_INDUSTRIES } from "@/lib/outreach";
 
 interface CreditRow {
   code: string;
@@ -72,7 +73,7 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<
-    "industries" | "quotes" | "users" | "companies" | "apikeys" | "alerts" | "audit" | "credits"
+    "industries" | "quotes" | "users" | "companies" | "outreach" | "apikeys" | "alerts" | "audit" | "credits"
   >("industries");
 
   const [industriesJson, setIndustriesJson] = useState<IndustryTemplate[]>([]);
@@ -96,6 +97,10 @@ export default function AdminPage() {
     verified: false,
   });
   const [apiKeys, setApiKeys] = useState<ApiKeyRow[]>([]);
+  const [outreachStats, setOutreachStats] = useState<{ industry: string; count: number }[]>([]);
+  const [outreachIndustry, setOutreachIndustry] = useState("");
+  const [outreachText, setOutreachText] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [apiKeyName, setApiKeyName] = useState("");
   const [apiKeyCredits, setApiKeyCredits] = useState("100");
   const [newKey, setNewKey] = useState<string | null>(null);
@@ -111,13 +116,14 @@ export default function AdminPage() {
       return;
     }
     setIndustriesJson(await res.json());
-    const [a, c, q, u, co, k] = await Promise.all([
+    const [a, c, q, u, co, k, os] = await Promise.all([
       fetch("/api/admin/audit", { headers }).then((r) => r.json()),
       fetch("/api/admin/credits", { headers }).then((r) => r.json()),
       fetch("/api/admin/quotes", { headers }).then((r) => r.json()),
       fetch("/api/admin/users", { headers }).then((r) => r.json()),
       fetch("/api/admin/companies", { headers }).then((r) => r.json()),
       fetch("/api/admin/apikeys", { headers }).then((r) => r.json()),
+      fetch("/api/admin/outreach", { headers }).then((r) => r.json()),
     ]);
     setAudit(a);
     setCredits(c);
@@ -125,6 +131,7 @@ export default function AdminPage() {
     setUsers(u);
     setCompanies(co);
     setApiKeys(k);
+    setOutreachStats(os);
     setAuthed(true);
   }
 
@@ -239,6 +246,51 @@ export default function AdminPage() {
     }
   }
 
+  async function uploadDomains(text: string) {
+    if (!text.trim()) {
+      setStatus("Nothing to upload");
+      return;
+    }
+    setUploading(true);
+    setStatus(null);
+    try {
+      const params = outreachIndustry
+        ? `?industry=${encodeURIComponent(outreachIndustry)}`
+        : "";
+      const res = await fetch(`/api/admin/outreach${params}`, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain", "x-admin-code": code },
+        body: text,
+      });
+      const data = await res.json();
+      setStatus(
+        res.ok
+          ? `Parsed ${data.parsed} domains — added ${data.added}, skipped ${data.duplicatesSkipped} duplicates`
+          : data.error || "Upload failed"
+      );
+      if (res.ok) {
+        setOutreachText("");
+        loadAll();
+      }
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function uploadDomainFile(file: File) {
+    const text = await file.text();
+    await uploadDomains(text);
+  }
+
+  async function removeOutreachIndustry(industry: string) {
+    if (!confirm(`Delete all '${industry}' domains?`)) return;
+    await fetch(`/api/admin/outreach?industry=${encodeURIComponent(industry)}`, {
+      method: "DELETE",
+      headers,
+    });
+    loadAll();
+  }
+
   async function removeKey(key: string) {
     if (!confirm("Revoke this API key?")) return;
     await fetch(`/api/admin/apikeys?key=${encodeURIComponent(key)}`, {
@@ -290,7 +342,7 @@ export default function AdminPage() {
       <div className="mx-auto max-w-5xl px-4 py-10">
         <h1 className="text-2xl font-bold">IndusBrain Admin</h1>
         <div className="mt-4 flex gap-2">
-          {(["industries", "quotes", "users", "companies", "apikeys", "alerts", "audit", "credits"] as const).map((t) => (
+          {(["industries", "quotes", "users", "companies", "outreach", "apikeys", "alerts", "audit", "credits"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -357,6 +409,98 @@ export default function AdminPage() {
               >
                 Save industry
               </button>
+            </div>
+          </div>
+        )}
+
+        {tab === "outreach" && (
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <div>
+              <h2 className="font-semibold">Upload domain lists (CSV or TXT)</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                One domain per line (CSV: first column is used). Domains are auto-classified by
+                industry from their name, or pick an industry to label the whole upload.
+              </p>
+              <label className="mt-3 block text-sm">
+                <span className="mb-1 block font-medium text-slate-700">Industry label</span>
+                <select
+                  value={outreachIndustry}
+                  onChange={(e) => setOutreachIndustry(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                >
+                  <option value="">Auto-classify from domain name</option>
+                  {OUTREACH_INDUSTRIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="mt-3 block text-sm">
+                <span className="mb-1 block font-medium text-slate-700">
+                  Upload .csv / .txt file
+                </span>
+                <input
+                  type="file"
+                  accept=".csv,.txt"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadDomainFile(f);
+                    e.target.value = "";
+                  }}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+                />
+              </label>
+              <div className="mt-3">
+                <span className="mb-1 block text-sm font-medium text-slate-700">
+                  Or paste domains
+                </span>
+                <textarea
+                  value={outreachText}
+                  onChange={(e) => setOutreachText(e.target.value)}
+                  rows={8}
+                  placeholder={"buildright.ng\nsolarmax.com\nlagoslegal.com"}
+                  className="w-full rounded-lg border border-slate-300 bg-white p-3 font-mono text-xs"
+                />
+                <button
+                  onClick={() => uploadDomains(outreachText)}
+                  disabled={uploading || !outreachText.trim()}
+                  className="mt-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {uploading ? "Uploading…" : "Upload pasted domains"}
+                </button>
+              </div>
+            </div>
+            <div>
+              <h2 className="font-semibold">
+                Database ({outreachStats.reduce((s, x) => s + x.count, 0).toLocaleString()}{" "}
+                domains)
+              </h2>
+              <ul className="mt-3 space-y-2">
+                {outreachStats.map((s) => (
+                  <li
+                    key={s.industry}
+                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm"
+                  >
+                    <span className="capitalize">{s.industry}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold">{s.count.toLocaleString()}</span>
+                      <button
+                        onClick={() => removeOutreachIndustry(s.industry)}
+                        className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </li>
+                ))}
+                {outreachStats.length === 0 && (
+                  <li className="rounded-lg border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+                    No domains yet — upload a list to get started.
+                  </li>
+                )}
+              </ul>
             </div>
           </div>
         )}

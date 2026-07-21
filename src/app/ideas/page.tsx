@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { IdeaReport } from "@/lib/ideas";
+import { useEffect, useState } from "react";
+import { IdeaReport, ideaReportToMarkdown } from "@/lib/ideas";
 
 type LockedReport = IdeaReport & { locked?: boolean };
+
+interface SavedIdeaMeta {
+  id: number;
+  title: string;
+  createdAt: string;
+}
 
 const COUNTRIES = [
   "Nigeria", "Ghana", "Kenya", "South Africa", "Egypt", "Côte d'Ivoire", "Senegal",
@@ -11,25 +17,25 @@ const COUNTRIES = [
   "United Kingdom", "United States", "United Arab Emirates", "India", "China", "Global",
 ];
 
-function reportToMarkdown(r: IdeaReport): string {
-  const lines: string[] = [`# Idea Engine Report`, ""];
-  lines.push(`**Brief:** ${r.brief}`);
-  if (r.country) lines.push(`**Jurisdiction:** ${r.country}`);
-  lines.push(`**Generated:** ${new Date(r.generatedAt).toLocaleString()}`, "");
-  r.ideas.forEach((i, n) => {
-    lines.push(`## ${n + 1}. ${i.name}`, "", i.concept, "");
-    lines.push(`**Target market:** ${i.targetMarket}`);
-    lines.push(`**Revenue model:** ${i.revenueModel}`);
-    lines.push(`**Why now:** ${i.whyNow}`, "");
-    lines.push(`### Ecosystem needed`);
-    i.ecosystemNeeded.forEach((e) => lines.push(`- ${e}`));
-    lines.push("", `### Key risks`);
-    i.risks.forEach((e) => lines.push(`- ${e}`));
-    lines.push("", `### First steps`);
-    i.firstSteps.forEach((e, k) => lines.push(`${k + 1}. ${e}`));
-    lines.push("");
-  });
-  return lines.join("\n");
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function reportToWordHtml(r: IdeaReport): string {
+  const md = ideaReportToMarkdown(r);
+  const body = md
+    .split("\n")
+    .map((line) => {
+      if (line.startsWith("# ")) return `<h1>${escapeHtml(line.slice(2))}</h1>`;
+      if (line.startsWith("## ")) return `<h2>${escapeHtml(line.slice(3))}</h2>`;
+      if (line.startsWith("### ")) return `<h3>${escapeHtml(line.slice(4))}</h3>`;
+      if (line.startsWith("- ")) return `<p style="margin:2pt 0 2pt 18pt">• ${escapeHtml(line.slice(2))}</p>`;
+      if (line.startsWith("> ")) return `<p style="color:#666;font-style:italic">${escapeHtml(line.slice(2))}</p>`;
+      const bold = escapeHtml(line).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+      return line.trim() ? `<p style="margin:4pt 0">${bold}</p>` : "";
+    })
+    .join("\n");
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>Idea Engine Report</title></head><body style="font-family:Calibri,Arial,sans-serif">${body}</body></html>`;
 }
 
 function downloadFile(content: string, filename: string, mime: string) {
@@ -42,6 +48,39 @@ function downloadFile(content: string, filename: string, mime: string) {
   URL.revokeObjectURL(url);
 }
 
+function Field({ label, value }: { label: string; value: string }) {
+  if (!value) return null;
+  return (
+    <div>
+      <span className="font-semibold">{label}</span>
+      <p className="text-slate-600">{value}</p>
+    </div>
+  );
+}
+
+function ListBlock({
+  label,
+  items,
+  ordered,
+}: {
+  label: string;
+  items: string[];
+  ordered?: boolean;
+}) {
+  if (items.length === 0) return null;
+  const Tag = ordered ? "ol" : "ul";
+  return (
+    <div className="mt-3 text-sm">
+      <span className="font-semibold">{label}</span>
+      <Tag className={`mt-1 ${ordered ? "list-decimal" : "list-disc"} pl-5 text-slate-600`}>
+        {items.map((e) => (
+          <li key={e}>{e}</li>
+        ))}
+      </Tag>
+    </div>
+  );
+}
+
 export default function IdeasPage() {
   const [brief, setBrief] = useState("");
   const [country, setCountry] = useState("Nigeria");
@@ -49,6 +88,28 @@ export default function IdeasPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<LockedReport | null>(null);
+  const [saved, setSaved] = useState<SavedIdeaMeta[]>([]);
+
+  async function loadSaved() {
+    try {
+      const res = await fetch("/api/my/ideas");
+      if (res.ok) setSaved(await res.json());
+    } catch {
+      /* not signed in */
+    }
+  }
+
+  useEffect(() => {
+    loadSaved();
+  }, []);
+
+  async function openSaved(id: number) {
+    const res = await fetch(`/api/my/ideas?id=${id}`);
+    if (res.ok) {
+      setReport(await res.json());
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
 
   async function generate(e: React.FormEvent) {
     e.preventDefault();
@@ -68,6 +129,7 @@ export default function IdeasPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to generate ideas");
       setReport(data);
+      loadSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -81,14 +143,20 @@ export default function IdeasPage() {
         <header className="mb-8">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold tracking-tight">Idea Engine</h1>
-            <a href="/" className="text-sm text-blue-600 hover:underline">
-              ← Blueprint generator
-            </a>
+            <nav className="flex gap-4 text-sm">
+              <a href="/outreach" className="text-blue-600 hover:underline">
+                Outreach
+              </a>
+              <a href="/" className="text-blue-600 hover:underline">
+                ← Blueprint generator
+              </a>
+            </nav>
           </div>
           <p className="mt-2 text-slate-600">
             The brain that maps every industry ecosystem can also invent new ones. Give it a
-            sector, a problem, or an ambition — it combines industries, market gaps and
-            jurisdictions to generate original, sellable venture concepts.
+            sector, a problem, or an ambition — it returns full venture dossiers: market
+            signals, competitive landscape, capital, unit economics, regulatory path and
+            go-to-market.
           </p>
         </header>
 
@@ -148,76 +216,89 @@ export default function IdeasPage() {
                 enter an access code and regenerate to unlock the full report.
               </div>
             )}
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-xl font-semibold">
                 {report.ideas.length} idea{report.ideas.length === 1 ? "" : "s"} for “
                 {report.brief}”
               </h2>
               {!report.locked && (
-                <button
-                  onClick={() =>
-                    downloadFile(reportToMarkdown(report), "idea-report.md", "text/markdown")
-                  }
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
-                >
-                  Download report
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() =>
+                      downloadFile(ideaReportToMarkdown(report), "idea-report.md", "text/markdown")
+                    }
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
+                  >
+                    Markdown
+                  </button>
+                  <button
+                    onClick={() =>
+                      downloadFile(reportToWordHtml(report), "idea-report.doc", "application/msword")
+                    }
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
+                  >
+                    Word
+                  </button>
+                </div>
               )}
             </div>
+            {!report.locked && (
+              <p className="mb-4 text-xs text-slate-500">
+                AI-generated venture concepts. Assumptions and confidence are stated per idea —
+                validate before investment.
+              </p>
+            )}
             <div className="space-y-6">
               {report.ideas.map((idea, n) => (
                 <div key={idea.name} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-bold">
-                    {n + 1}. {idea.name}
-                  </h3>
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-lg font-bold">
+                      {n + 1}. {idea.name}
+                    </h3>
+                    {idea.confidence && (
+                      <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                        Confidence: {idea.confidence}
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-2 text-slate-700">{idea.concept}</p>
                   <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-                    <div>
-                      <span className="font-semibold">Target market</span>
-                      <p className="text-slate-600">{idea.targetMarket}</p>
-                    </div>
-                    <div>
-                      <span className="font-semibold">Revenue model</span>
-                      <p className="text-slate-600">{idea.revenueModel}</p>
-                    </div>
-                    <div>
-                      <span className="font-semibold">Why now</span>
-                      <p className="text-slate-600">{idea.whyNow}</p>
-                    </div>
+                    <Field label="Target market" value={idea.targetMarket} />
+                    <Field label="Revenue model" value={idea.revenueModel} />
+                    <Field label="Why now" value={idea.whyNow} />
+                    <Field label="Market signals" value={idea.marketSignals} />
+                    <Field label="Competitive landscape" value={idea.competitiveLandscape} />
+                    <Field label="Capital required" value={idea.capitalRequired} />
+                    <Field label="Unit economics" value={idea.unitEconomics} />
                   </div>
-                  {idea.ecosystemNeeded.length > 0 && (
-                    <div className="mt-4 text-sm">
-                      <span className="font-semibold">Ecosystem needed</span>
-                      <ul className="mt-1 list-disc pl-5 text-slate-600">
-                        {idea.ecosystemNeeded.map((e) => (
-                          <li key={e}>{e}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {idea.risks.length > 0 && (
-                    <div className="mt-3 text-sm">
-                      <span className="font-semibold">Key risks</span>
-                      <ul className="mt-1 list-disc pl-5 text-slate-600">
-                        {idea.risks.map((e) => (
-                          <li key={e}>{e}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {idea.firstSteps.length > 0 && (
-                    <div className="mt-3 text-sm">
-                      <span className="font-semibold">First steps</span>
-                      <ol className="mt-1 list-decimal pl-5 text-slate-600">
-                        {idea.firstSteps.map((e) => (
-                          <li key={e}>{e}</li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
+                  <ListBlock label="Regulatory path" items={idea.regulatoryPath} ordered />
+                  <ListBlock label="Go-to-market" items={idea.goToMarket} ordered />
+                  <ListBlock label="Ecosystem needed" items={idea.ecosystemNeeded} />
+                  <ListBlock label="Key risks" items={idea.risks} />
+                  <ListBlock label="Key assumptions" items={idea.assumptions} />
+                  <ListBlock label="First steps" items={idea.firstSteps} ordered />
                 </div>
               ))}
             </div>
+          </section>
+        )}
+
+        {saved.length > 0 && (
+          <section className="mt-10">
+            <h2 className="mb-3 text-lg font-semibold">My saved idea reports</h2>
+            <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+              {saved.map((s) => (
+                <li key={s.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                  <span>{s.title}</span>
+                  <button
+                    onClick={() => openSaved(s.id)}
+                    className="text-blue-600 hover:underline"
+                  >
+                    Open
+                  </button>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
       </div>

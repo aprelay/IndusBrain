@@ -273,6 +273,9 @@ export default function Home() {
               <a href="/ideas" className="text-sm font-semibold text-blue-600 hover:underline">
                 💡 Idea Engine
               </a>
+              <a href="/outreach" className="text-sm font-semibold text-blue-600 hover:underline">
+                📡 Outreach
+              </a>
             </div>
             <div className="text-sm">
               {user ? (

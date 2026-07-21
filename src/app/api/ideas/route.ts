@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateIdeas, IdeaReport } from "@/lib/ideas";
-import { consumeCredit, consumeUserCredit, logBlueprintRequest } from "@/lib/db";
+import {
+  consumeCredit,
+  consumeUserCredit,
+  logBlueprintRequest,
+  saveIdeaReport,
+} from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 
 const MAX_REQUEST_LENGTH = 500;
@@ -32,8 +37,16 @@ function toPreview(report: IdeaReport): IdeaReport {
       targetMarket: "Unlock the full report to see details",
       revenueModel: "—",
       whyNow: "—",
+      marketSignals: "",
+      competitiveLandscape: "",
+      capitalRequired: "",
+      unitEconomics: "",
+      confidence: "",
+      regulatoryPath: [],
+      goToMarket: [],
       ecosystemNeeded: [],
       risks: [],
+      assumptions: [],
       firstSteps: [],
     })),
   };
@@ -74,9 +87,9 @@ export async function POST(req: NextRequest) {
     ip,
   });
 
+  const user = getSessionUser(req);
   const billingEnabled = process.env.BILLING_ENABLED === "true";
   if (billingEnabled) {
-    const user = getSessionUser(req);
     const accessCode = typeof body?.accessCode === "string" ? body.accessCode.trim() : "";
     const unlocked =
       (user !== null && (user.role === "admin" || consumeUserCredit(user.id))) ||
@@ -84,6 +97,9 @@ export async function POST(req: NextRequest) {
     if (!unlocked) {
       return NextResponse.json({ ...toPreview(report), locked: true });
     }
+  }
+  if (user) {
+    saveIdeaReport(user.id, `Ideas: ${brief.slice(0, 80)}`, JSON.stringify(report));
   }
   return NextResponse.json(report);
 }
