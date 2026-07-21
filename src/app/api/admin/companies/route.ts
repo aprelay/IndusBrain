@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteCompany, listCompanies, upsertCompany } from "@/lib/db";
-import { isAdminAuthorized } from "@/lib/adminAuth";
+import { auditAdminAction, isAdminAuthorized } from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  auditAdminAction(req, "company added");
   const body = await req.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   const category = typeof body?.category === "string" ? body.category.trim() : "";
@@ -54,6 +55,7 @@ export async function DELETE(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  auditAdminAction(req, "company removed");
   const id = Number(req.nextUrl.searchParams.get("id"));
   if (!Number.isInteger(id)) {
     return NextResponse.json({ error: "Missing 'id'" }, { status: 400 });

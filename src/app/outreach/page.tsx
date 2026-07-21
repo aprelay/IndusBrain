@@ -32,6 +32,7 @@ export default function OutreachPage() {
   const [error, setError] = useState<string | null>(null);
   const [accessCode, setAccessCode] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [signInRequired, setSignInRequired] = useState(false);
 
   useEffect(() => {
     fetch("/api/outreach?stats=1")
@@ -50,7 +51,14 @@ export default function OutreachPage() {
         if (query.trim()) params.set("q", query.trim());
         const res = await fetch(`/api/outreach?${params}`);
         const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || "Search failed");
+        if (!res.ok) {
+          if (data?.signInRequired) {
+            setSignInRequired(true);
+            throw new Error(data.error);
+          }
+          throw new Error(data?.error || "Search failed");
+        }
+        setSignInRequired(false);
         setResult(data);
         setPage(p);
       } catch (err) {
@@ -153,7 +161,16 @@ export default function OutreachPage() {
               </button>
             </div>
           </div>
-          {error && <p className="mt-3 rounded-lg bg-red-50 px-4 py-3 text-red-700">{error}</p>}
+          {error && (
+            <p className="mt-3 rounded-lg bg-red-50 px-4 py-3 text-red-700">
+              {error}{" "}
+              {signInRequired && (
+                <a href="/login" className="font-semibold underline">
+                  Sign in or create a free account →
+                </a>
+              )}
+            </p>
+          )}
         </div>
 
         {stats.length > 0 && !result && (
@@ -213,7 +230,17 @@ export default function OutreachPage() {
                 <tbody className="divide-y divide-slate-100">
                   {result.domains.map((d) => (
                     <tr key={d.id}>
-                      <td className="px-4 py-2 font-medium">{d.domain}</td>
+                      <td className="px-4 py-2 font-medium">
+                        <a
+                          href={`/api/outreach/visit?domain=${encodeURIComponent(d.domain)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                          title={`Open ${d.domain} in a new tab`}
+                        >
+                          {d.domain} ↗
+                        </a>
+                      </td>
                       <td className="px-4 py-2 capitalize text-slate-600">{d.industry}</td>
                     </tr>
                   ))}

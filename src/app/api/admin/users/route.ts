@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addUserCredits, listUsers } from "@/lib/db";
-import { isAdminAuthorized } from "@/lib/adminAuth";
+import { auditAdminAction, isAdminAuthorized } from "@/lib/adminAuth";
 import { sendEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  auditAdminAction(req, "user credits updated");
   const body = await req.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim() : "";
   const credits = Number(body?.credits);

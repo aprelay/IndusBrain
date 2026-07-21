@@ -6,7 +6,7 @@ import {
   updateDomainIndustries,
 } from "@/lib/db";
 import { classifyDomain, classifyDomainsByWebsite } from "@/lib/outreach";
-import { isAdminAuthorized } from "@/lib/adminAuth";
+import { auditAdminAction, isAdminAuthorized } from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  auditAdminAction(req, "outreach reclassify run");
   if (req.nextUrl.searchParams.get("reset") === "1") {
     resetAiChecked();
   }

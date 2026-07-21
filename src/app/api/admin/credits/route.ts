@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { issueCredits, listCredits } from "@/lib/db";
-import { isAdminAuthorized } from "@/lib/adminAuth";
+import { auditAdminAction, isAdminAuthorized } from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -26,5 +26,6 @@ export async function POST(req: NextRequest) {
     );
   }
   issueCredits(code, credits, note);
+  auditAdminAction(req, "credits issued", `${credits} credits`);
   return NextResponse.json({ ok: true });
 }

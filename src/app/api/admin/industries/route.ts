@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteIndustry, listIndustries, upsertIndustry } from "@/lib/db";
-import { isAdminAuthorized } from "@/lib/adminAuth";
+import { auditAdminAction, isAdminAuthorized } from "@/lib/adminAuth";
 import { IndustryTemplate } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     );
   }
   upsertIndustry(template);
+  auditAdminAction(req, "industry saved", template.id);
   return NextResponse.json({ ok: true, id: template.id });
 }
 
@@ -51,5 +52,6 @@ export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id") || "";
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
   const deleted = deleteIndustry(id);
+  auditAdminAction(req, "industry deleted", id);
   return NextResponse.json({ ok: deleted });
 }

@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSession, createUser } from "@/lib/db";
 import { hashPassword, newSessionToken, SESSION_COOKIE } from "@/lib/auth";
+import { clientIp, isRateLimited } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  if (isRateLimited(`register:${clientIp(req)}`, 5, 15 * 60_000)) {
+    return NextResponse.json(
+      { error: "Too many registrations — try again later." },
+      { status: 429 }
+    );
+  }
   const body = await req.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim() : "";
   const password = typeof body?.password === "string" ? body.password : "";

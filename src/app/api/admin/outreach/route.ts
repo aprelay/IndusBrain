@@ -5,7 +5,7 @@ import {
   outreachIndustryStats,
 } from "@/lib/db";
 import { OUTREACH_INDUSTRIES, parseDomainList } from "@/lib/outreach";
-import { isAdminAuthorized } from "@/lib/adminAuth";
+import { auditAdminAction, isAdminAuthorized } from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
     );
   }
   const added = bulkInsertOutreachDomains(entries);
+  auditAdminAction(req, "outreach upload", `${entries.length} parsed, ${added} added`);
   return NextResponse.json({
     parsed: entries.length,
     added,
@@ -66,5 +67,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Missing 'industry'" }, { status: 400 });
   }
   const removed = deleteOutreachIndustry(industry);
+  auditAdminAction(req, "outreach delete", `${industry}: ${removed} removed`);
   return NextResponse.json({ removed });
 }
