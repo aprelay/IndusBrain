@@ -1,4 +1,4 @@
-import { Blueprint } from "@/lib/types";
+import { Blueprint, Phase } from "@/lib/types";
 import { findIndustry } from "@/data/industries";
 
 const AI_SYSTEM_PROMPT = `You are an expert on industry ecosystems worldwide, with deep knowledge of Nigeria and West Africa. Given a client request, produce a complete ecosystem blueprint listing EVERY company, professional, and government body that must be engaged (and paid) to deliver the request — lawyers, banks, insurers, engineers, surveyors, importers, clearing agents, logistics, regulators, etc.
@@ -39,12 +39,33 @@ async function generateWithAI(request: string): Promise<Blueprint | null> {
     const content = data.choices?.[0]?.message?.content;
     if (!content) return null;
     const parsed = JSON.parse(content);
+    if (
+      typeof parsed?.title !== "string" ||
+      typeof parsed?.industry !== "string" ||
+      typeof parsed?.summary !== "string" ||
+      !Array.isArray(parsed?.phases)
+    ) {
+      return null;
+    }
     return {
-      ...parsed,
+      title: parsed.title,
+      industry: parsed.industry,
+      summary: parsed.summary,
+      phases: parsed.phases.map((p: Partial<Phase>) => ({
+        name: typeof p?.name === "string" ? p.name : "Phase",
+        description: typeof p?.description === "string" ? p.description : "",
+        typicalDuration:
+          typeof p?.typicalDuration === "string" ? p.typicalDuration : "Varies",
+        deliverables: Array.isArray(p?.deliverables) ? p.deliverables : [],
+        stakeholders: Array.isArray(p?.stakeholders) ? p.stakeholders : [],
+      })),
+      regulators: Array.isArray(parsed.regulators) ? parsed.regulators : [],
+      risks: Array.isArray(parsed.risks) ? parsed.risks : [],
+      paymentPoints: Array.isArray(parsed.paymentPoints) ? parsed.paymentPoints : [],
       request,
       source: "ai",
       generatedAt: new Date().toISOString(),
-    } as Blueprint;
+    };
   } catch {
     return null;
   }
