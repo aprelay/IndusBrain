@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>IndusBrain — The Industry Ecosystem Brain</title>
+<meta name="description" content="IndusBrain turns any industry request into a complete project blueprint: every company, professional, regulator and payment point — for any industry, anywhere on earth." />
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<style>
+  :root {
+    --bg: #060b18;
+    --bg2: #0b1226;
+    --card: #101a33;
+    --line: #1e2c50;
+    --text: #e8eefc;
+    --muted: #9db0d6;
+    --accent: #4f8cff;
+    --accent2: #37e0b8;
+    --gold: #ffc861;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    line-height: 1.6;
+  }
+  a { color: var(--accent); text-decoration: none; }
+
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 5vw;
+    background: rgba(6, 11, 24, 0.82);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .logo { font-size: 1.25rem; font-weight: 800; letter-spacing: 0.5px; color: var(--text); }
+  .logo span { color: var(--accent2); }
+  .nav-links { display: flex; gap: 26px; align-items: center; }
+  .nav-links a { color: var(--muted); font-size: 0.95rem; font-weight: 600; }
+  .nav-links a:hover { color: var(--text); }
+  .btn {
+    display: inline-block; padding: 10px 22px; border-radius: 10px;
+    font-weight: 700; font-size: 0.95rem; transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #2f6ae0); color: #fff; box-shadow: 0 4px 20px rgba(79,140,255,0.35); }
+  .btn-primary:hover { transform: translateY(-2px); }
+  .btn-ghost { border: 1px solid var(--line); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--accent); }
+
+  header.hero { position: relative; min-height: 100vh; display: flex; align-items: center; overflow: hidden; }
+  #map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hero-overlay {
+    position: relative; z-index: 2; width: 100%;
+    padding: 120px 5vw 60px;
+    background: radial-gradient(ellipse at 30% 40%, rgba(6,11,24,0.15), rgba(6,11,24,0.72) 75%);
+  }
+  .hero-inner { max-width: 720px; }
+  .eyebrow { color: var(--accent2); font-weight: 700; letter-spacing: 2.5px; font-size: 0.8rem; text-transform: uppercase; }
+  h1 { font-size: clamp(2.2rem, 5.5vw, 4rem); line-height: 1.12; margin: 14px 0 18px; font-weight: 800; }
+  h1 .grad { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { color: var(--muted); font-size: 1.12rem; max-width: 620px; }
+  .hero-cta { margin-top: 30px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .hero-stats { margin-top: 44px; display: flex; gap: 40px; flex-wrap: wrap; }
+  .stat b { display: block; font-size: 1.6rem; color: var(--text); }
+  .stat span { color: var(--muted); font-size: 0.88rem; }
+
+  section { padding: 90px 5vw; max-width: 1150px; margin: 0 auto; }
+  .sec-eyebrow { color: var(--accent); font-weight: 700; letter-spacing: 2px; font-size: 0.78rem; text-transform: uppercase; }
+  h2 { font-size: clamp(1.7rem, 3.4vw, 2.5rem); margin: 10px 0 14px; font-weight: 800; }
+  .lead { color: var(--muted); max-width: 760px; font-size: 1.05rem; }
+
+  .grid { display: grid; gap: 22px; margin-top: 40px; }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card {
+    background: linear-gradient(160deg, var(--card), var(--bg2));
+    border: 1px solid var(--line); border-radius: 16px; padding: 28px;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  .card:hover { transform: translateY(-4px); border-color: var(--accent); }
+  .card .icon { font-size: 1.8rem; }
+  .card h3 { margin: 12px 0 8px; font-size: 1.15rem; }
+  .card p { color: var(--muted); font-size: 0.95rem; }
+
+  .steps { counter-reset: step; }
+  .step { display: flex; gap: 20px; padding: 22px 0; border-bottom: 1px solid var(--line); }
+  .step:last-child { border-bottom: none; }
+  .step-num {
+    flex: 0 0 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #06101f; font-weight: 800; font-size: 1.1rem;
+  }
+  .step h3 { font-size: 1.08rem; margin-bottom: 4px; }
+  .step p { color: var(--muted); font-size: 0.95rem; }
+
+  .about-wrap { display: grid; gap: 40px; grid-template-columns: 1fr; }
+  @media (min-width: 880px) { .about-wrap { grid-template-columns: 1.1fr 0.9fr; } }
+  .value-list { list-style: none; margin-top: 20px; }
+  .value-list li { padding: 10px 0 10px 30px; position: relative; color: var(--muted); }
+  .value-list li::before { content: "◆"; position: absolute; left: 0; color: var(--accent2); }
+
+  .idea-banner {
+    margin-top: 40px; border-radius: 20px; padding: 40px;
+    background: linear-gradient(135deg, rgba(79,140,255,0.14), rgba(55,224,184,0.10));
+    border: 1px solid rgba(79,140,255,0.35);
+  }
+  .idea-banner h3 { font-size: 1.4rem; margin-bottom: 10px; }
+  .idea-banner p { color: var(--muted); max-width: 720px; }
+
+  footer { border-top: 1px solid var(--line); padding: 40px 5vw; text-align: center; color: var(--muted); font-size: 0.9rem; }
+  footer .logo { font-size: 1.05rem; }
+
+  @media (max-width: 720px) { .nav-links a.hide-sm { display: none; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="#top">Indus<span>Brain</span></a>
+  <div class="nav-links">
+    <a href="#what" class="hide-sm">What we do</a>
+    <a href="#who" class="hide-sm">Who we are</a>
+    <a href="#grow" class="hide-sm">How we help you grow</a>
+    <a class="btn btn-primary" href="https://indusbrain-production.up.railway.app" target="_blank" rel="noopener">Launch the Brain</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <canvas id="map-canvas"></canvas>
+  <div class="hero-overlay">
+    <div class="hero-inner">
+      <div class="eyebrow">The Industry Ecosystem Brain</div>
+      <h1>Every idea on earth,<br /><span class="grad">linked into a blueprint.</span></h1>
+      <p>
+        Tell IndusBrain what an industry wants to build — anywhere in the world — and it maps the
+        entire ecosystem: every lawyer, bank, insurer, engineer, surveyor, importer, clearing agent,
+        logistics partner and regulator, in order, with who gets paid at every step.
+      </p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="https://indusbrain-production.up.railway.app" target="_blank" rel="noopener">Generate a blueprint</a>
+        <a class="btn btn-ghost" href="#what">See how it works</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat"><b>35+</b><span>curated industry ecosystems</span></div>
+        <div class="stat"><b>∞</b><span>industries via AI — anything on earth</span></div>
+        <div class="stat"><b>190+</b><span>jurisdictions reachable</span></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="what">
+  <div class="sec-eyebrow">What we do</div>
+  <h2>From one sentence to a complete project ecosystem</h2>
+  <p class="lead">
+    Before a single kilowatt is installed or a single brick is laid, dozens of companies get paid.
+    IndusBrain knows who they are, in what order they act, what each one costs, and which regulator
+    signs off — so nothing surprises you mid-project.
+  </p>
+  <div class="grid grid-3">
+    <div class="card"><div class="icon">🧠</div><h3>Ecosystem blueprints</h3><p>Type any request — "build a solar plant", "open a pharmaceutical factory", "start a fish farm" — and get every stakeholder, phase, risk, regulator and payment point, downloadable in Word, Excel, PDF, Markdown and JSON.</p></div>
+    <div class="card"><div class="icon">🌍</div><h3>Any industry, any country</h3><p>A curated, expert-structured knowledge base for Nigeria plus an AI engine that maps ecosystems for any industry in any jurisdiction on earth — with country-specific regulators and laws.</p></div>
+    <div class="card"><div class="icon">📜</div><h3>Government-grade citations</h3><p>Regulator entries carry legal basis, official sources and verification dates — built for enterprise and government procurement where every fact must be traceable.</p></div>
+    <div class="card"><div class="icon">💡</div><h3>The Idea Engine</h3><p>The brain doesn't just map what exists — it invents. It combines industries, market gaps and jurisdictions to generate original, sellable venture concepts, complete with the ecosystem needed to build them.</p></div>
+    <div class="card"><div class="icon">🤝</div><h3>Vetted company directory</h3><p>Blueprints don't stop at roles — they name vetted firms to call: law firms, banks, insurers, clearing agents and engineers matched to your project.</p></div>
+    <div class="card"><div class="icon">🔌</div><h3>Partner API</h3><p>Banks, consultancies and platforms plug blueprint generation directly into their own products with per-call API keys.</p></div>
+  </div>
+</section>
+
+<section id="who">
+  <div class="sec-eyebrow">Who we are</div>
+  <div class="about-wrap">
+    <div>
+      <h2>We are the map-makers of industry</h2>
+      <p class="lead">
+        IndusBrain was born from a simple observation: every industrial project — a solar farm, a
+        hospital, a brewery — is really a network of dozens of companies that must connect in the
+        right order. That network is invisible until something goes wrong. We made it visible.
+      </p>
+      <ul class="value-list">
+        <li><b>Depth over noise.</b> Our moat is jurisdiction depth — real regulators, real laws, real payment sequences, verified and dated.</li>
+        <li><b>Built for the deciders.</b> Enterprise and government-grade: audit trails, citations, access control and traceable sources.</li>
+        <li><b>Global ambition, local precision.</b> Deep-mapped ecosystems starting in Nigeria, expanding country by country — while AI covers everywhere else today.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>What drives us</h3>
+      <p>
+        Trillions are lost every year to projects that stall because someone didn't know a permit,
+        a payment or a partner existed. We believe every industry deserves a complete map before
+        the first dollar moves — and that the same brain that maps ecosystems can imagine new ones.
+      </p>
+      <br />
+      <p>
+        That's why IndusBrain is both an atlas and an inventor: it documents every industry
+        ecosystem on earth, and it composes new ideas from them — with no limit to what it can create.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section id="grow">
+  <div class="sec-eyebrow">How we help industries grow</div>
+  <h2>Your project, de-risked from day one</h2>
+  <div class="steps" style="margin-top: 30px;">
+    <div class="step"><div class="step-num">1</div><div><h3>Tell us the ambition</h3><p>One sentence or a guided intake — industry, country, scale. That's all the brain needs.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div><h3>Receive the full blueprint</h3><p>Phases, stakeholders, regulators with legal citations, risks, payment points and a budget skeleton — in minutes, not months of consulting.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div><h3>Engage the right partners</h3><p>Use the vetted directory to contact the exact firms your project needs, in the order it needs them.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div><h3>Execute with confidence</h3><p>No surprise regulators, no missed approvals, no unbudgeted payments. Re-download and revisit your blueprints anytime in your workspace.</p></div></div>
+  </div>
+
+  <div class="idea-banner">
+    <h3>💡 Need the next big idea, not just a map?</h3>
+    <p>
+      Ask the Idea Engine. IndusBrain combines what it knows about every industry on earth to
+      generate original venture concepts — the product, the market, the revenue model and the full
+      ecosystem required to build it. Ideas become sellable assets, delivered as complete reports.
+    </p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="https://indusbrain-production.up.railway.app" target="_blank" rel="noopener">Request a quote</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <a class="logo" href="#top">Indus<span>Brain</span></a>
+  <p style="margin-top: 8px;">The Industry Ecosystem Brain — blueprints and ideas for every industry on earth.</p>
+  <p style="margin-top: 8px;">
+    <a href="https://indusbrain-production.up.railway.app" target="_blank" rel="noopener">Open the app</a> ·
+    <a href="https://indusbrain-production.up.railway.app/privacy" target="_blank" rel="noopener">Privacy</a>
+  </p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<script src="map.js"></script>
+</body>
+</html>
