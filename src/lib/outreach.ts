@@ -24,6 +24,8 @@ export const OUTREACH_INDUSTRIES = [
   "engineering",
   "security",
   "environmental",
+  "non-profit",
+  "professional services",
   "unclassified",
 ] as const;
 
@@ -122,7 +124,7 @@ export async function classifyDomainsWithAI(
           messages: [
             {
               role: "system",
-              content: `You classify company website domains into industries. Allowed industries (use these labels EXACTLY): ${industries.join(", ")}. Use everything you know: brand words, abbreviations (e.g. bpo=business process outsourcing → technology & ICT, arch=architecture → construction), foreign-language words, and any real companies you recognize by name. Always make your best-effort guess — use "unclassified" only as an absolute last resort when there is no signal at all. Respond with JSON: {"classifications": [{"domain": string, "industry": string}, ...]} covering every input domain.`,
+              content: `You are an expert at recognizing companies from their website domains. Many are real companies you know from your training data — recall who they are. Allowed industries (use these labels EXACTLY): ${industries.join(", ")}. For each domain, if you recognize the company or can infer from words/abbreviations in any language, give that industry. Only respond "unclassified" if you genuinely have no idea. Respond with JSON: {"classifications": [{"domain": string, "industry": string}, ...]} covering every input domain.`,
             },
             { role: "user", content: batch.join("\n") },
           ],
