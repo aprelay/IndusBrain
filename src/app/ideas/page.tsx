@@ -107,6 +107,12 @@ export default function IdeasPage() {
   }
 
   useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d: { user: unknown }) => {
+        if (!d.user) window.location.href = "/login";
+      })
+      .catch(() => {});
     loadSaved();
     fetch("/api/insights")
       .then((r) => r.json())

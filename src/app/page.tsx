@@ -203,7 +203,13 @@ export default function Home() {
       .catch(() => {});
     fetch("/api/auth/me")
       .then((r) => r.json())
-      .then((d: { user: SessionUser | null }) => setUser(d.user))
+      .then((d: { user: SessionUser | null }) => {
+        if (!d.user) {
+          window.location.href = "/login";
+          return;
+        }
+        setUser(d.user);
+      })
       .catch(() => {});
     fetch("/api/companies")
       .then((r) => r.json())

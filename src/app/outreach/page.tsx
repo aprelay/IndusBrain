@@ -35,6 +35,12 @@ export default function OutreachPage() {
   const [signInRequired, setSignInRequired] = useState(false);
 
   useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d: { user: unknown }) => {
+        if (!d.user) window.location.href = "/login";
+      })
+      .catch(() => {});
     fetch("/api/outreach?stats=1")
       .then((r) => r.json())
       .then(setStats)

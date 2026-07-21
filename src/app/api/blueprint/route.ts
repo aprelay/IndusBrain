@@ -34,6 +34,13 @@ export async function POST(req: NextRequest) {
       { status: 429 }
     );
   }
+  const sessionUser = getSessionUser(req);
+  if (!sessionUser) {
+    return NextResponse.json(
+      { error: "Please sign in to generate blueprints.", signInRequired: true },
+      { status: 401 }
+    );
+  }
   const body = await req.json().catch(() => null);
   const request = typeof body?.request === "string" ? body.request.trim() : "";
   if (!request) {

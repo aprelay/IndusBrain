@@ -62,6 +62,13 @@ export async function POST(req: NextRequest) {
       { status: 429 }
     );
   }
+  const sessionUser = getSessionUser(req);
+  if (!sessionUser) {
+    return NextResponse.json(
+      { error: "Please sign in to use the Idea Engine.", signInRequired: true },
+      { status: 401 }
+    );
+  }
   const body = await req.json().catch(() => null);
   const brief = typeof body?.brief === "string" ? body.brief.trim() : "";
   if (!brief) {
