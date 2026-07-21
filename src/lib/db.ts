@@ -603,14 +603,34 @@ export function countBrainMemory(): number {
   return (getDb().prepare("SELECT COUNT(*) AS n FROM brain_memory").get() as { n: number }).n;
 }
 
+function ensureAiCheckedColumn(): void {
+  const d = getDb();
+  const cols = d.prepare("PRAGMA table_info(outreach_domains)").all() as { name: string }[];
+  if (!cols.some((c) => c.name === "ai_checked")) {
+    d.exec("ALTER TABLE outreach_domains ADD COLUMN ai_checked INTEGER NOT NULL DEFAULT 0");
+  }
+}
+
 export function listUnclassifiedDomains(limit: number): string[] {
+  ensureAiCheckedColumn();
   return (
     getDb()
       .prepare(
-        "SELECT domain FROM outreach_domains WHERE industry = 'unclassified' ORDER BY id LIMIT ?"
+        "SELECT domain FROM outreach_domains WHERE industry = 'unclassified' AND ai_checked = 0 ORDER BY id LIMIT ?"
       )
       .all(limit) as { domain: string }[]
   ).map((r) => r.domain);
+}
+
+export function markDomainsAiChecked(domains: string[]): void {
+  if (domains.length === 0) return;
+  ensureAiCheckedColumn();
+  const d = getDb();
+  const update = d.prepare("UPDATE outreach_domains SET ai_checked = 1 WHERE domain = ?");
+  const tx = d.transaction((items: string[]) => {
+    for (const dom of items) update.run(dom);
+  });
+  tx(domains);
 }
 
 export function updateDomainIndustries(entries: { domain: string; industry: string }[]): number {

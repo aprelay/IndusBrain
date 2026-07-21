@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listUnclassifiedDomains, updateDomainIndustries } from "@/lib/db";
+import { listUnclassifiedDomains, markDomainsAiChecked, updateDomainIndustries } from "@/lib/db";
 import { classifyDomain, classifyDomainsWithAI } from "@/lib/outreach";
 import { isAdminAuthorized } from "@/lib/adminAuth";
 
@@ -38,12 +38,14 @@ export async function POST(req: NextRequest) {
   }
 
   const reclassified = updates.length > 0 ? updateDomainIndustries(updates) : 0;
+  // Mark every processed domain so the next run moves on to fresh ones
+  markDomainsAiChecked(domains);
   const moreBatches = domains.length === RUN_LIMIT;
   return NextResponse.json({
     processed: domains.length,
     reclassified,
     byKeywords: updates.length - aiClassified,
     byAI: aiClassified,
-    remaining: moreBatches && reclassified > 0 ? "yes — run again to continue" : 0,
+    remaining: moreBatches ? "yes — run again to continue" : 0,
   });
 }
