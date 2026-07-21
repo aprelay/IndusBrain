@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSession, createUser } from "@/lib/db";
 import { hashPassword, newSessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { clientIp, isRateLimited } from "@/lib/security";
+import { verifyCaptcha } from "@/lib/captcha";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,18 @@ export async function POST(req: NextRequest) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8) {
     return NextResponse.json(
       { error: "Valid email and password (min 8 characters) required" },
+      { status: 400 }
+    );
+  }
+  const confirmPassword =
+    typeof body?.confirmPassword === "string" ? body.confirmPassword : "";
+  if (confirmPassword !== password) {
+    return NextResponse.json({ error: "Passwords do not match" }, { status: 400 });
+  }
+  const captchaToken = typeof body?.captchaToken === "string" ? body.captchaToken : "";
+  if (!(await verifyCaptcha(captchaToken, clientIp(req)))) {
+    return NextResponse.json(
+      { error: "Captcha verification failed — please try again." },
       { status: 400 }
     );
   }

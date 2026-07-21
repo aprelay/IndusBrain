@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSession, getUserByEmail } from "@/lib/db";
 import { newSessionToken, SESSION_COOKIE, verifyPassword } from "@/lib/auth";
 import { clientIp, isRateLimited } from "@/lib/security";
+import { verifyCaptcha } from "@/lib/captcha";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,13 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim() : "";
   const password = typeof body?.password === "string" ? body.password : "";
+  const captchaToken = typeof body?.captchaToken === "string" ? body.captchaToken : "";
+  if (!(await verifyCaptcha(captchaToken, clientIp(req)))) {
+    return NextResponse.json(
+      { error: "Captcha verification failed — please try again." },
+      { status: 400 }
+    );
+  }
   const user = email ? getUserByEmail(email) : null;
   if (!user || !verifyPassword(password, user.passwordHash)) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
