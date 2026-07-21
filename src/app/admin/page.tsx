@@ -9,16 +9,41 @@ interface CreditRow {
   note: string;
 }
 
+interface QuoteRow {
+  id: number;
+  name: string;
+  email: string;
+  company: string;
+  request: string;
+  status: string;
+  createdAt: string;
+}
+
+interface UserRow {
+  id: number;
+  email: string;
+  role: string;
+  credits: number;
+}
+
+const QUOTE_STATUSES = ["new", "quoted", "invoiced", "paid", "closed"];
+
 export default function AdminPage() {
   const [code, setCode] = useState("");
   const [authed, setAuthed] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"industries" | "audit" | "credits">("industries");
+  const [tab, setTab] = useState<"industries" | "quotes" | "users" | "audit" | "credits">(
+    "industries"
+  );
 
   const [industriesJson, setIndustriesJson] = useState<IndustryTemplate[]>([]);
   const [editorText, setEditorText] = useState("");
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [credits, setCredits] = useState<CreditRow[]>([]);
+  const [quotes, setQuotes] = useState<QuoteRow[]>([]);
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [userCreditEmail, setUserCreditEmail] = useState("");
+  const [userCreditAmount, setUserCreditAmount] = useState("10");
   const [newCreditCode, setNewCreditCode] = useState("");
   const [newCreditAmount, setNewCreditAmount] = useState("10");
   const [newCreditNote, setNewCreditNote] = useState("");
@@ -34,12 +59,16 @@ export default function AdminPage() {
       return;
     }
     setIndustriesJson(await res.json());
-    const [a, c] = await Promise.all([
+    const [a, c, q, u] = await Promise.all([
       fetch("/api/admin/audit", { headers }).then((r) => r.json()),
       fetch("/api/admin/credits", { headers }).then((r) => r.json()),
+      fetch("/api/admin/quotes", { headers }).then((r) => r.json()),
+      fetch("/api/admin/users", { headers }).then((r) => r.json()),
     ]);
     setAudit(a);
     setCredits(c);
+    setQuotes(q);
+    setUsers(u);
     setAuthed(true);
   }
 
@@ -69,6 +98,27 @@ export default function AdminPage() {
       headers,
     });
     loadAll();
+  }
+
+  async function setQuoteStatus(id: number, statusValue: string) {
+    await fetch("/api/admin/quotes", {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ id, status: statusValue }),
+    });
+    loadAll();
+  }
+
+  async function addUserCredits() {
+    setStatus(null);
+    const res = await fetch("/api/admin/users", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ email: userCreditEmail, credits: Number(userCreditAmount) }),
+    });
+    const data = await res.json();
+    setStatus(res.ok ? "Credits added to account" : data.error || "Failed");
+    if (res.ok) loadAll();
   }
 
   async function addCredits() {
@@ -123,7 +173,7 @@ export default function AdminPage() {
       <div className="mx-auto max-w-5xl px-4 py-10">
         <h1 className="text-2xl font-bold">IndusBrain Admin</h1>
         <div className="mt-4 flex gap-2">
-          {(["industries", "audit", "credits"] as const).map((t) => (
+          {(["industries", "quotes", "users", "audit", "credits"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -184,6 +234,102 @@ export default function AdminPage() {
                 className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
               >
                 Save industry
+              </button>
+            </div>
+          </div>
+        )}
+
+        {tab === "quotes" && (
+          <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-slate-500">
+                  <th className="px-4 py-2">Time (UTC)</th>
+                  <th className="px-4 py-2">Name</th>
+                  <th className="px-4 py-2">Email</th>
+                  <th className="px-4 py-2">Company</th>
+                  <th className="px-4 py-2">Request</th>
+                  <th className="px-4 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quotes.map((q) => (
+                  <tr key={q.id} className="border-b border-slate-100 align-top">
+                    <td className="whitespace-nowrap px-4 py-2 text-slate-500">{q.createdAt}</td>
+                    <td className="px-4 py-2">{q.name}</td>
+                    <td className="px-4 py-2">{q.email}</td>
+                    <td className="px-4 py-2">{q.company || "—"}</td>
+                    <td className="px-4 py-2">{q.request}</td>
+                    <td className="px-4 py-2">
+                      <select
+                        value={q.status}
+                        onChange={(e) => setQuoteStatus(q.id, e.target.value)}
+                        className="rounded border border-slate-300 px-2 py-1 text-xs"
+                      >
+                        {QUOTE_STATUSES.map((s) => (
+                          <option key={s}>{s}</option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+                {quotes.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-4 text-slate-500">
+                      No quote requests yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {tab === "users" && (
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <div>
+              <h2 className="font-semibold">Registered accounts</h2>
+              <ul className="mt-3 space-y-2">
+                {users.map((u) => (
+                  <li
+                    key={u.id}
+                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-2"
+                  >
+                    <span>
+                      {u.email}{" "}
+                      <span className="text-xs text-slate-500">({u.role})</span>
+                    </span>
+                    <span className="text-sm text-slate-600">{u.credits} credits</span>
+                  </li>
+                ))}
+                {users.length === 0 && (
+                  <li className="text-sm text-slate-500">No accounts yet.</li>
+                )}
+              </ul>
+            </div>
+            <div>
+              <h2 className="font-semibold">Add credits to an account</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                After a client pays your invoice (bank transfer), add their credits here.
+              </p>
+              <input
+                value={userCreditEmail}
+                onChange={(e) => setUserCreditEmail(e.target.value)}
+                placeholder="Client account email"
+                className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2"
+              />
+              <input
+                value={userCreditAmount}
+                onChange={(e) => setUserCreditAmount(e.target.value)}
+                type="number"
+                min={1}
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2"
+              />
+              <button
+                onClick={addUserCredits}
+                className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                Add credits
               </button>
             </div>
           </div>

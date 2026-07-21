@@ -12,6 +12,12 @@ interface IndustryOption {
 
 type LockedBlueprint = Blueprint & { locked?: boolean };
 
+interface SessionUser {
+  email: string;
+  role: string;
+  credits: number;
+}
+
 const NIGERIAN_STATES = [
   "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno",
   "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT Abuja", "Gombe",
@@ -106,6 +112,9 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [blueprint, setBlueprint] = useState<LockedBlueprint | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [quote, setQuote] = useState({ name: "", email: "", company: "", request: "" });
+  const [quoteStatus, setQuoteStatus] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/industries")
@@ -115,7 +124,28 @@ export default function Home() {
         if (data.length > 0) setSector(data[0].name);
       })
       .catch(() => {});
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d: { user: SessionUser | null }) => setUser(d.user))
+      .catch(() => {});
   }, []);
+
+  async function submitQuote(e: React.FormEvent) {
+    e.preventDefault();
+    setQuoteStatus(null);
+    const res = await fetch("/api/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(quote),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setQuoteStatus("Request received — we'll send your quote and invoice by email.");
+      setQuote({ name: "", email: "", company: "", request: "" });
+    } else {
+      setQuoteStatus(data?.error || "Failed to submit");
+    }
+  }
 
   async function generate(text: string) {
     if (!text.trim()) return;
@@ -145,7 +175,28 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-5xl px-4 py-10">
         <header className="mb-8 print:hidden">
-          <h1 className="text-3xl font-bold tracking-tight">Industry Ecosystem Brain</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold tracking-tight">Industry Ecosystem Brain</h1>
+            <div className="text-sm">
+              {user ? (
+                <span className="text-slate-600">
+                  {user.email} · <span className="font-semibold">{user.credits} credits</span>{" "}
+                  <button
+                    onClick={() =>
+                      fetch("/api/auth/logout", { method: "POST" }).then(() => setUser(null))
+                    }
+                    className="ml-2 text-blue-600 hover:underline"
+                  >
+                    Sign out
+                  </button>
+                </span>
+              ) : (
+                <a href="/login" className="text-blue-600 hover:underline">
+                  Sign in / Register
+                </a>
+              )}
+            </div>
+          </div>
           <p className="mt-2 text-slate-600">
             Type any client request — or use the guided wizard — and get a complete blueprint of
             every company, professional and regulator involved: lawyers, banks, insurers, engineers,
@@ -497,6 +548,59 @@ export default function Home() {
             Enter a request above or use the guided wizard to see a full ecosystem blueprint.
           </p>
         )}
+
+        <section className="mt-12 rounded-xl border border-slate-200 bg-white p-6 shadow-sm print:hidden">
+          <h2 className="text-xl font-semibold">Request a quote</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Tell us about your project — we&apos;ll send a quote and invoice by email. After
+            payment (bank transfer), blueprint credits are added to your account.
+          </p>
+          <form onSubmit={submitQuote} className="mt-4 grid gap-3 sm:grid-cols-3">
+            <input
+              value={quote.name}
+              onChange={(e) => setQuote({ ...quote, name: e.target.value })}
+              placeholder="Your name"
+              required
+              className="rounded-lg border border-slate-300 px-3 py-2"
+            />
+            <input
+              type="email"
+              value={quote.email}
+              onChange={(e) => setQuote({ ...quote, email: e.target.value })}
+              placeholder="Email"
+              required
+              className="rounded-lg border border-slate-300 px-3 py-2"
+            />
+            <input
+              value={quote.company}
+              onChange={(e) => setQuote({ ...quote, company: e.target.value })}
+              placeholder="Company (optional)"
+              className="rounded-lg border border-slate-300 px-3 py-2"
+            />
+            <textarea
+              value={quote.request}
+              onChange={(e) => setQuote({ ...quote, request: e.target.value })}
+              placeholder="Describe your project and how many blueprints/locations you need"
+              required
+              rows={3}
+              className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-3"
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-blue-600 px-6 py-2 font-semibold text-white hover:bg-blue-700 sm:col-span-3 sm:justify-self-start"
+            >
+              Request quote
+            </button>
+          </form>
+          {quoteStatus && <p className="mt-3 text-sm text-slate-600">{quoteStatus}</p>}
+        </section>
+
+        <footer className="mt-10 text-center text-xs text-slate-400 print:hidden">
+          <a href="/privacy" className="hover:underline">
+            Privacy policy
+          </a>{" "}
+          · Data processed in line with NDPA/NDPR and GDPR.
+        </footer>
       </div>
     </main>
   );

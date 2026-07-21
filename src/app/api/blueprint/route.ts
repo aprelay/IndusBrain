@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateBlueprint } from "@/lib/generate";
-import { consumeCredit, logBlueprintRequest } from "@/lib/db";
+import { consumeCredit, consumeUserCredit, logBlueprintRequest } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 import { Blueprint } from "@/lib/types";
 
 const MAX_REQUEST_LENGTH = 500;
@@ -53,8 +54,11 @@ export async function POST(req: NextRequest) {
 
   const billingEnabled = process.env.BILLING_ENABLED === "true";
   if (billingEnabled) {
+    const user = getSessionUser(req);
     const accessCode = typeof body?.accessCode === "string" ? body.accessCode.trim() : "";
-    const unlocked = accessCode !== "" && consumeCredit(accessCode);
+    const unlocked =
+      (user !== null && (user.role === "admin" || consumeUserCredit(user.id))) ||
+      (accessCode !== "" && consumeCredit(accessCode));
     if (!unlocked) {
       return NextResponse.json({ ...toPreview(blueprint), locked: true });
     }

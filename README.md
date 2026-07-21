@@ -13,7 +13,9 @@ Type any client request (e.g. "build a solar power system in Lagos") and get a c
 
 - **Admin panel** at `/admin` (protected by `ADMIN_ACCESS_CODE`): add/edit/delete industries without code, view the audit log, and issue client credits.
 - **Audit log** — every blueprint request is recorded (request, industry, source, IP, timestamp).
-- **Monetization (pay-per-blueprint)** — set `BILLING_ENABLED=true` to serve free previews only; clients unlock full blueprints with access codes (1 credit per blueprint), issued from the admin panel.
+- **Monetization (pay-per-blueprint, manual invoicing)** — set `BILLING_ENABLED=true` to serve free previews only. Clients submit a quote request, you invoice them manually (bank transfer), then add credits to their account (or issue an access code) from the admin panel. 1 credit = 1 full blueprint.
+- **User accounts** — email/password registration at `/login` (scrypt-hashed passwords, httpOnly session cookies); credits are tied to accounts.
+- **NDPR/GDPR** — privacy policy at `/privacy`; security headers (HSTS, X-Frame-Options, nosniff) on all responses.
 - **Citations** — regulator entries support `legalBasis`, `officialUrl`, and `lastVerified` fields.
 - **Rate limiting + input caps** on the public API.
 

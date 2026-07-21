@@ -25,6 +25,28 @@ function getDb(): Database.Database {
       note TEXT NOT NULL DEFAULT '',
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'client',
+      credits INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS sessions (
+      token TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS quote_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      company TEXT NOT NULL DEFAULT '',
+      request TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'new',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
     CREATE TABLE IF NOT EXISTS audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       request TEXT NOT NULL,
@@ -114,6 +136,126 @@ export function listCredits(): { code: string; credits: number; note: string }[]
   return getDb()
     .prepare("SELECT code, credits, note FROM credits ORDER BY updated_at DESC")
     .all() as { code: string; credits: number; note: string }[];
+}
+
+export interface User {
+  id: number;
+  email: string;
+  role: string;
+  credits: number;
+}
+
+export function createUser(email: string, passwordHash: string): User | null {
+  try {
+    const info = getDb()
+      .prepare("INSERT INTO users (email, password_hash) VALUES (?, ?)")
+      .run(email.toLowerCase(), passwordHash);
+    return { id: Number(info.lastInsertRowid), email: email.toLowerCase(), role: "client", credits: 0 };
+  } catch {
+    return null;
+  }
+}
+
+export function getUserByEmail(
+  email: string
+): (User & { passwordHash: string }) | null {
+  const row = getDb()
+    .prepare("SELECT id, email, password_hash, role, credits FROM users WHERE email = ?")
+    .get(email.toLowerCase()) as
+    | { id: number; email: string; password_hash: string; role: string; credits: number }
+    | undefined;
+  return row
+    ? { id: row.id, email: row.email, passwordHash: row.password_hash, role: row.role, credits: row.credits }
+    : null;
+}
+
+export function createSession(userId: number, token: string, expiresAt: string): void {
+  getDb()
+    .prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)")
+    .run(token, userId, expiresAt);
+}
+
+export function getUserBySession(token: string): User | null {
+  const row = getDb()
+    .prepare(
+      `SELECT u.id, u.email, u.role, u.credits FROM sessions s
+       JOIN users u ON u.id = s.user_id
+       WHERE s.token = ? AND s.expires_at > datetime('now')`
+    )
+    .get(token) as User | undefined;
+  return row ?? null;
+}
+
+export function deleteSession(token: string): void {
+  getDb().prepare("DELETE FROM sessions WHERE token = ?").run(token);
+}
+
+export function consumeUserCredit(userId: number): boolean {
+  return (
+    getDb()
+      .prepare("UPDATE users SET credits = credits - 1 WHERE id = ? AND credits > 0")
+      .run(userId).changes > 0
+  );
+}
+
+export function addUserCredits(email: string, credits: number): boolean {
+  return (
+    getDb()
+      .prepare("UPDATE users SET credits = credits + ? WHERE email = ?")
+      .run(credits, email.toLowerCase()).changes > 0
+  );
+}
+
+export function listUsers(): User[] {
+  return getDb()
+    .prepare("SELECT id, email, role, credits FROM users ORDER BY id DESC")
+    .all() as User[];
+}
+
+export interface QuoteRequest {
+  id: number;
+  name: string;
+  email: string;
+  company: string;
+  request: string;
+  status: string;
+  createdAt: string;
+}
+
+export function createQuoteRequest(q: {
+  name: string;
+  email: string;
+  company: string;
+  request: string;
+}): void {
+  getDb()
+    .prepare("INSERT INTO quote_requests (name, email, company, request) VALUES (?, ?, ?, ?)")
+    .run(q.name, q.email, q.company, q.request);
+}
+
+export function listQuoteRequests(): QuoteRequest[] {
+  const rows = getDb()
+    .prepare(
+      "SELECT id, name, email, company, request, status, created_at FROM quote_requests ORDER BY id DESC"
+    )
+    .all() as {
+    id: number;
+    name: string;
+    email: string;
+    company: string;
+    request: string;
+    status: string;
+    created_at: string;
+  }[];
+  return rows.map((r) => ({ ...r, createdAt: r.created_at }));
+}
+
+export function updateQuoteStatus(id: number, status: string): boolean {
+  return (
+    getDb()
+      .prepare("UPDATE quote_requests SET status = ? WHERE id = ?")
+      .run(status, id).changes > 0
+  );
 }
 
 export function logBlueprintRequest(entry: {
