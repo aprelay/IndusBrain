@@ -121,7 +121,7 @@ export async function classifyDomainsWithAI(
           messages: [
             {
               role: "system",
-              content: `You classify company website domains into industries. Allowed industries (use these labels EXACTLY): ${industries.join(", ")}. Infer from the domain name (brand words, abbreviations, any language). If truly impossible to tell, use "unclassified". Respond with JSON: {"classifications": [{"domain": string, "industry": string}, ...]} covering every input domain.`,
+              content: `You classify company website domains into industries. Allowed industries (use these labels EXACTLY): ${industries.join(", ")}. Use everything you know: brand words, abbreviations (e.g. bpo=business process outsourcing → technology & ICT, arch=architecture → construction), foreign-language words, and any real companies you recognize by name. Always make your best-effort guess — use "unclassified" only as an absolute last resort when there is no signal at all. Respond with JSON: {"classifications": [{"domain": string, "industry": string}, ...]} covering every input domain.`,
             },
             { role: "user", content: batch.join("\n") },
           ],
