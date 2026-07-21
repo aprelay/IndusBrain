@@ -1,5 +1,24 @@
-import { Blueprint, Phase } from "@/lib/types";
-import { findIndustry } from "@/data/industries";
+import { Blueprint, BudgetLine, Phase } from "@/lib/types";
+import { findIndustryInDb } from "@/lib/db";
+
+export function computeBudget(phases: Phase[]): BudgetLine[] {
+  const lines: BudgetLine[] = [];
+  for (const phase of phases) {
+    for (const s of phase.stakeholders) {
+      if (s.typicalCost || s.estimatedCostMin != null) {
+        lines.push({
+          item: s.role,
+          phase: phase.name,
+          costNote: s.typicalCost || "",
+          estimatedCostMin: s.estimatedCostMin,
+          estimatedCostMax: s.estimatedCostMax,
+          currency: s.costCurrency,
+        });
+      }
+    }
+  }
+  return lines;
+}
 
 const AI_SYSTEM_PROMPT = `You are an expert on industry ecosystems worldwide, with deep knowledge of Nigeria and West Africa. Given a client request, produce a complete ecosystem blueprint listing EVERY company, professional, and government body that must be engaged (and paid) to deliver the request — lawyers, banks, insurers, engineers, surveyors, importers, clearing agents, logistics, regulators, etc.
 
@@ -72,7 +91,7 @@ async function generateWithAI(request: string): Promise<Blueprint | null> {
 }
 
 export async function generateBlueprint(request: string): Promise<Blueprint> {
-  const curated = findIndustry(request);
+  const curated = findIndustryInDb(request);
 
   if (curated) {
     return {
@@ -86,11 +105,14 @@ export async function generateBlueprint(request: string): Promise<Blueprint> {
       paymentPoints: curated.paymentPoints,
       source: "curated",
       generatedAt: new Date().toISOString(),
+      isicCode: curated.isicCode,
+      country: curated.country,
+      budget: computeBudget(curated.phases),
     };
   }
 
   const ai = await generateWithAI(request);
-  if (ai) return ai;
+  if (ai) return { ...ai, budget: computeBudget(ai.phases) };
 
   return {
     title: "General Project Ecosystem",

@@ -4,6 +4,9 @@ export interface Stakeholder {
   responsibility: string;
   whenEngaged: string;
   typicalCost?: string;
+  estimatedCostMin?: number;
+  estimatedCostMax?: number;
+  costCurrency?: string;
 }
 
 export type StakeholderCategory =
@@ -31,6 +34,9 @@ export interface Regulator {
   name: string;
   jurisdiction: string;
   purpose: string;
+  legalBasis?: string;
+  officialUrl?: string;
+  lastVerified?: string;
 }
 
 export interface Blueprint {
@@ -44,15 +50,38 @@ export interface Blueprint {
   paymentPoints: string[];
   source: "curated" | "ai" | "hybrid";
   generatedAt: string;
+  isicCode?: string;
+  country?: string;
+  budget?: BudgetLine[];
+}
+
+export interface BudgetLine {
+  item: string;
+  phase: string;
+  costNote: string;
+  estimatedCostMin?: number;
+  estimatedCostMax?: number;
+  currency?: string;
 }
 
 export interface IndustryTemplate {
   id: string;
   name: string;
+  isicCode?: string;
+  country?: string;
   keywords: string[];
   summary: string;
   phases: Phase[];
   regulators: Regulator[];
   risks: string[];
   paymentPoints: string[];
+}
+
+export interface AuditEntry {
+  id: number;
+  request: string;
+  industry: string;
+  source: string;
+  ip: string;
+  createdAt: string;
 }

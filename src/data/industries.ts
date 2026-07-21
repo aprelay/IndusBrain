@@ -4,6 +4,8 @@ export const industries: IndustryTemplate[] = [
   {
     id: "solar-power",
     name: "Solar Power System",
+    isicCode: "D3510",
+    country: "Nigeria",
     keywords: [
       "solar",
       "pv",
@@ -242,6 +244,8 @@ export const industries: IndustryTemplate[] = [
   {
     id: "construction",
     name: "Building & Construction Project",
+    isicCode: "F4100",
+    country: "Nigeria",
     keywords: ["construction", "building", "real estate", "estate", "housing", "warehouse", "factory building", "road"],
     summary:
       "Ecosystem for delivering a construction project in Nigeria from land acquisition to handover.",
@@ -323,6 +327,8 @@ export const industries: IndustryTemplate[] = [
   {
     id: "agro-processing",
     name: "Agro-Processing Plant",
+    isicCode: "C1000",
+    country: "Nigeria",
     keywords: ["agro", "agriculture", "farm", "processing", "rice mill", "cassava", "poultry", "food processing", "palm oil"],
     summary: "Ecosystem for setting up an agro-processing facility in Nigeria.",
     phases: [
@@ -400,6 +406,8 @@ export const industries: IndustryTemplate[] = [
   {
     id: "import-trade",
     name: "General Importation & Trade",
+    isicCode: "G4690",
+    country: "Nigeria",
     keywords: ["import", "importation", "clearing", "customs", "shipping", "trade", "goods", "container"],
     summary: "Ecosystem for importing goods into Nigeria and distributing them.",
     phases: [
@@ -475,6 +483,8 @@ export const industries: IndustryTemplate[] = [
   {
     id: "oil-gas",
     name: "Oil & Gas Project",
+    isicCode: "B0610",
+    country: "Nigeria",
     keywords: ["oil", "gas", "petroleum", "lng", "pipeline", "refinery", "depot", "filling station"],
     summary: "Ecosystem for oil & gas sector projects in Nigeria (downstream/midstream focus).",
     phases: [
@@ -551,6 +561,8 @@ export const industries: IndustryTemplate[] = [
   {
     id: "telecom-ict",
     name: "Telecom / ICT Infrastructure",
+    isicCode: "J6110",
+    country: "Nigeria",
     keywords: ["telecom", "tower", "fibre", "fiber", "internet", "isp", "data center", "data centre", "ict", "network"],
     summary: "Ecosystem for telecom/ICT infrastructure deployment in Nigeria.",
     phases: [
@@ -626,6 +638,8 @@ export const industries: IndustryTemplate[] = [
   {
     id: "healthcare",
     name: "Healthcare Facility",
+    isicCode: "Q8610",
+    country: "Nigeria",
     keywords: ["hospital", "clinic", "healthcare", "medical", "diagnostic", "pharmacy", "laboratory"],
     summary: "Ecosystem for establishing a hospital, clinic, or diagnostic centre in Nigeria.",
     phases: [
@@ -703,6 +717,8 @@ export const industries: IndustryTemplate[] = [
   {
     id: "manufacturing",
     name: "Manufacturing Plant (General)",
+    isicCode: "C3290",
+    country: "Nigeria",
     keywords: ["manufacturing", "plant", "production line", "assembly", "packaging", "fmcg"],
     summary: "Ecosystem for establishing a general manufacturing operation in Nigeria.",
     phases: [

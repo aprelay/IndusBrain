@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateBlueprint } from "@/lib/generate";
+import { consumeCredit, logBlueprintRequest } from "@/lib/db";
+import { Blueprint } from "@/lib/types";
 
 const MAX_REQUEST_LENGTH = 500;
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -42,5 +44,40 @@ export async function POST(req: NextRequest) {
     );
   }
   const blueprint = await generateBlueprint(request);
+  logBlueprintRequest({
+    request,
+    industry: blueprint.industry,
+    source: blueprint.source,
+    ip,
+  });
+
+  const billingEnabled = process.env.BILLING_ENABLED === "true";
+  if (billingEnabled) {
+    const accessCode = typeof body?.accessCode === "string" ? body.accessCode.trim() : "";
+    const unlocked = accessCode !== "" && consumeCredit(accessCode);
+    if (!unlocked) {
+      return NextResponse.json({ ...toPreview(blueprint), locked: true });
+    }
+  }
   return NextResponse.json(blueprint);
+}
+
+function toPreview(bp: Blueprint): Blueprint {
+  return {
+    ...bp,
+    phases: bp.phases.map((p) => ({
+      ...p,
+      stakeholders: p.stakeholders.slice(0, 1).map((s) => ({
+        ...s,
+        responsibility: "Unlock the full blueprint to see details",
+        whenEngaged: "—",
+        typicalCost: undefined,
+      })),
+      deliverables: [],
+    })),
+    regulators: [],
+    risks: [],
+    paymentPoints: [],
+    budget: [],
+  };
 }
