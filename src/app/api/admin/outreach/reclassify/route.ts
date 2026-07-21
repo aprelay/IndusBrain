@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listUnclassifiedDomains, markDomainsAiChecked, updateDomainIndustries } from "@/lib/db";
+import {
+  listUnclassifiedDomains,
+  markDomainsAiChecked,
+  resetAiChecked,
+  updateDomainIndustries,
+} from "@/lib/db";
 import { classifyDomain, classifyDomainsWithAI } from "@/lib/outreach";
 import { isAdminAuthorized } from "@/lib/adminAuth";
 
@@ -13,6 +18,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const useAI = req.nextUrl.searchParams.get("ai") !== "0";
+  if (req.nextUrl.searchParams.get("reset") === "1") {
+    resetAiChecked();
+  }
   const domains = listUnclassifiedDomains(RUN_LIMIT);
   if (domains.length === 0) {
     return NextResponse.json({ processed: 0, reclassified: 0, remaining: 0 });
@@ -27,9 +35,11 @@ export async function POST(req: NextRequest) {
   }
 
   let aiClassified = 0;
+  let aiAttempted: string[] = stillUnknown;
   if (useAI && stillUnknown.length > 0) {
-    const aiResults = await classifyDomainsWithAI(stillUnknown);
-    for (const [domain, industry] of Array.from(aiResults.entries())) {
+    const { results, attempted } = await classifyDomainsWithAI(stillUnknown);
+    aiAttempted = attempted;
+    for (const [domain, industry] of Array.from(results.entries())) {
       if (industry !== "unclassified") {
         updates.push({ domain, industry });
         aiClassified++;
@@ -38,8 +48,9 @@ export async function POST(req: NextRequest) {
   }
 
   const reclassified = updates.length > 0 ? updateDomainIndustries(updates) : 0;
-  // Mark every processed domain so the next run moves on to fresh ones
-  markDomainsAiChecked(domains);
+  // Mark domains the AI actually saw (plus keyword hits) so the next run moves on;
+  // domains from failed AI batches stay eligible for retry
+  markDomainsAiChecked([...updates.map((u) => u.domain), ...aiAttempted]);
   const moreBatches = domains.length === RUN_LIMIT;
   return NextResponse.json({
     processed: domains.length,

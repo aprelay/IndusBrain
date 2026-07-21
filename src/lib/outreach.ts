@@ -102,10 +102,11 @@ const AI_BATCH_SIZE = 80;
 
 export async function classifyDomainsWithAI(
   domains: string[]
-): Promise<Map<string, string>> {
+): Promise<{ results: Map<string, string>; attempted: string[] }> {
   const apiKey = process.env.OPENAI_API_KEY;
   const result = new Map<string, string>();
-  if (!apiKey || domains.length === 0) return result;
+  const attempted: string[] = [];
+  if (!apiKey || domains.length === 0) return { results: result, attempted };
   const industries = OUTREACH_INDUSTRIES.filter((i) => i !== "unclassified");
   for (let i = 0; i < domains.length; i += AI_BATCH_SIZE) {
     const batch = domains.slice(i, i + AI_BATCH_SIZE);
@@ -138,6 +139,7 @@ export async function classifyDomainsWithAI(
       const parsed = JSON.parse(content) as {
         classifications?: { domain?: unknown; industry?: unknown }[];
       };
+      attempted.push(...batch);
       const allowed = new Set<string>(OUTREACH_INDUSTRIES);
       for (const c of parsed.classifications || []) {
         if (
@@ -153,7 +155,7 @@ export async function classifyDomainsWithAI(
       // skip failed batch; caller reports remaining
     }
   }
-  return result;
+  return { results: result, attempted };
 }
 
 export function parseDomainList(

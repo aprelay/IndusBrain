@@ -633,6 +633,11 @@ export function markDomainsAiChecked(domains: string[]): void {
   tx(domains);
 }
 
+export function resetAiChecked(): void {
+  ensureAiCheckedColumn();
+  getDb().exec("UPDATE outreach_domains SET ai_checked = 0 WHERE industry = 'unclassified'");
+}
+
 export function updateDomainIndustries(entries: { domain: string; industry: string }[]): number {
   const d = getDb();
   const update = d.prepare("UPDATE outreach_domains SET industry = ? WHERE domain = ?");
