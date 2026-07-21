@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateBlueprint } from "@/lib/generate";
-import { consumeCredit, consumeUserCredit, logBlueprintRequest } from "@/lib/db";
+import { consumeCredit, consumeUserCredit, logBlueprintRequest, saveBlueprint } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { Blueprint } from "@/lib/types";
 
@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const blueprint = await generateBlueprint(request);
+  const country = typeof body?.country === "string" ? body.country.trim().slice(0, 60) : "";
+  const blueprint = await generateBlueprint(request, country || undefined);
   logBlueprintRequest({
     request,
     industry: blueprint.industry,
@@ -52,9 +53,9 @@ export async function POST(req: NextRequest) {
     ip,
   });
 
+  const user = getSessionUser(req);
   const billingEnabled = process.env.BILLING_ENABLED === "true";
   if (billingEnabled) {
-    const user = getSessionUser(req);
     const accessCode = typeof body?.accessCode === "string" ? body.accessCode.trim() : "";
     const unlocked =
       (user !== null && (user.role === "admin" || consumeUserCredit(user.id))) ||
@@ -63,7 +64,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ...toPreview(blueprint), locked: true });
     }
   }
-  return NextResponse.json(blueprint);
+  let savedId: number | undefined;
+  if (user) {
+    savedId = saveBlueprint(user.id, blueprint.title, JSON.stringify(blueprint));
+  }
+  return NextResponse.json(savedId ? { ...blueprint, savedId } : blueprint);
 }
 
 function toPreview(bp: Blueprint): Blueprint {

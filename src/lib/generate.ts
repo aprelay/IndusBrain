@@ -1,5 +1,6 @@
 import { Blueprint, BudgetLine, Phase } from "@/lib/types";
 import { findIndustryInDb } from "@/lib/db";
+import { enrichRegulators } from "@/data/regulator-citations";
 
 export function computeBudget(phases: Phase[]): BudgetLine[] {
   const lines: BudgetLine[] = [];
@@ -33,9 +34,12 @@ Respond ONLY with JSON matching this TypeScript type (no markdown fences):
   "paymentPoints": string[]
 }`;
 
-async function generateWithAI(request: string): Promise<Blueprint | null> {
+async function generateWithAI(request: string, country?: string): Promise<Blueprint | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
+  const userContent = country
+    ? `${request}\n\nJurisdiction: ${country}. Use the regulators, laws and typical stakeholders of ${country}.`
+    : request;
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -47,7 +51,7 @@ async function generateWithAI(request: string): Promise<Blueprint | null> {
         model: process.env.OPENAI_MODEL || "gpt-4o-mini",
         messages: [
           { role: "system", content: AI_SYSTEM_PROMPT },
-          { role: "user", content: request },
+          { role: "user", content: userContent },
         ],
         response_format: { type: "json_object" },
         temperature: 0.4,
@@ -82,6 +86,7 @@ async function generateWithAI(request: string): Promise<Blueprint | null> {
       risks: Array.isArray(parsed.risks) ? parsed.risks : [],
       paymentPoints: Array.isArray(parsed.paymentPoints) ? parsed.paymentPoints : [],
       request,
+      country,
       source: "ai",
       generatedAt: new Date().toISOString(),
     };
@@ -90,8 +95,8 @@ async function generateWithAI(request: string): Promise<Blueprint | null> {
   }
 }
 
-export async function generateBlueprint(request: string): Promise<Blueprint> {
-  const curated = findIndustryInDb(request);
+export async function generateBlueprint(request: string, country?: string): Promise<Blueprint> {
+  const curated = country && country !== "Nigeria" ? null : findIndustryInDb(request);
 
   if (curated) {
     return {
@@ -100,7 +105,7 @@ export async function generateBlueprint(request: string): Promise<Blueprint> {
       industry: curated.name,
       summary: curated.summary,
       phases: curated.phases,
-      regulators: curated.regulators,
+      regulators: enrichRegulators(curated.regulators),
       risks: curated.risks,
       paymentPoints: curated.paymentPoints,
       source: "curated",
@@ -111,7 +116,7 @@ export async function generateBlueprint(request: string): Promise<Blueprint> {
     };
   }
 
-  const ai = await generateWithAI(request);
+  const ai = await generateWithAI(request, country);
   if (ai) return { ...ai, budget: computeBudget(ai.phases) };
 
   return {
@@ -279,7 +284,14 @@ export function blueprintToMarkdown(bp: Blueprint): string {
   lines.push("");
   lines.push(`## Regulators & Government Bodies`);
   for (const r of bp.regulators) {
-    lines.push(`- **${r.name}** (${r.jurisdiction}): ${r.purpose}`);
+    const cite = [
+      r.legalBasis ? `Legal basis: ${r.legalBasis}` : "",
+      r.officialUrl ? r.officialUrl : "",
+      r.lastVerified ? `verified ${r.lastVerified}` : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    lines.push(`- **${r.name}** (${r.jurisdiction}): ${r.purpose}${cite ? ` — ${cite}` : ""}`);
   }
   lines.push("");
   lines.push(`## Key Risks`);

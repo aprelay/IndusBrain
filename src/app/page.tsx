@@ -28,6 +28,22 @@ const NIGERIAN_STATES = [
 
 const SCALES = ["Small (pilot)", "Medium (commercial)", "Large (industrial)", "Enterprise / government"];
 
+const COUNTRIES = [
+  "Nigeria", "Ghana", "Kenya", "South Africa", "Egypt", "Côte d'Ivoire", "Senegal",
+  "Tanzania", "Uganda", "Rwanda", "Ethiopia", "Cameroon", "Benin", "Togo", "Niger Republic",
+  "United Kingdom", "United States", "United Arab Emirates", "India", "China", "Other",
+];
+
+interface Company {
+  id: number;
+  name: string;
+  category: string;
+  services: string;
+  location: string;
+  contact: string;
+  verified: boolean;
+}
+
 function toMarkdown(bp: Blueprint): string {
   const lines: string[] = [];
   lines.push(`# ${bp.title} — Ecosystem Blueprint`, "");
@@ -76,6 +92,65 @@ function budgetToCsv(bp: Blueprint): string {
     .join("\n");
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function toWordHtml(bp: Blueprint): string {
+  const parts: string[] = [];
+  parts.push(`<h1>${escapeHtml(bp.title)} — Ecosystem Blueprint</h1>`);
+  parts.push(`<p><b>Client request:</b> ${escapeHtml(bp.request)}<br/><b>Industry:</b> ${escapeHtml(bp.industry)}${bp.isicCode ? ` (ISIC ${bp.isicCode})` : ""}${bp.country ? `<br/><b>Country:</b> ${escapeHtml(bp.country)}` : ""}<br/><b>Generated:</b> ${new Date(bp.generatedAt).toLocaleString()}</p>`);
+  parts.push(`<h2>Summary</h2><p>${escapeHtml(bp.summary)}</p>`);
+  parts.push(`<h2>Phases &amp; Stakeholders</h2>`);
+  for (const phase of bp.phases) {
+    parts.push(`<h3>${escapeHtml(phase.name)}</h3><p>${escapeHtml(phase.description)}<br/><i>Typical duration: ${escapeHtml(phase.typicalDuration)}</i></p>`);
+    parts.push(`<table border="1" cellpadding="4" cellspacing="0"><tr><th>Who</th><th>Category</th><th>Responsibility</th><th>When engaged</th><th>Typical cost</th></tr>`);
+    for (const s of phase.stakeholders) {
+      parts.push(`<tr><td>${escapeHtml(s.role)}</td><td>${escapeHtml(s.category)}</td><td>${escapeHtml(s.responsibility)}</td><td>${escapeHtml(s.whenEngaged)}</td><td>${escapeHtml(s.typicalCost || "—")}</td></tr>`);
+    }
+    parts.push(`</table>`);
+    if (phase.deliverables.length > 0) parts.push(`<p><b>Deliverables:</b> ${escapeHtml(phase.deliverables.join("; "))}</p>`);
+  }
+  parts.push(`<h2>Regulators &amp; Government Bodies</h2><ul>`);
+  for (const r of bp.regulators) {
+    parts.push(`<li><b>${escapeHtml(r.name)}</b> (${escapeHtml(r.jurisdiction)}): ${escapeHtml(r.purpose)}${r.legalBasis ? ` — Legal basis: ${escapeHtml(r.legalBasis)}` : ""}${r.officialUrl ? ` — ${escapeHtml(r.officialUrl)}` : ""}</li>`);
+  }
+  parts.push(`</ul><h2>Key Risks</h2><ul>`);
+  for (const r of bp.risks) parts.push(`<li>${escapeHtml(r)}</li>`);
+  parts.push(`</ul><h2>Payment Points</h2><ol>`);
+  for (const p of bp.paymentPoints) parts.push(`<li>${escapeHtml(p)}</li>`);
+  parts.push(`</ol>`);
+  if ((bp.budget?.length ?? 0) > 0) {
+    parts.push(`<h2>Budget Lines</h2><table border="1" cellpadding="4" cellspacing="0"><tr><th>Phase</th><th>Item</th><th>Cost</th></tr>`);
+    for (const line of bp.budget!) {
+      parts.push(`<tr><td>${escapeHtml(line.phase)}</td><td>${escapeHtml(line.item)}</td><td>${escapeHtml(line.estimatedCostMin != null ? `${line.currency || ""} ${line.estimatedCostMin.toLocaleString()}${line.estimatedCostMax != null ? ` – ${line.estimatedCostMax.toLocaleString()}` : ""}` : line.costNote)}</td></tr>`);
+    }
+    parts.push(`</table>`);
+  }
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>${escapeHtml(bp.title)}</title></head><body style="font-family:Calibri,Arial,sans-serif">${parts.join("")}</body></html>`;
+}
+
+function toExcelXml(bp: Blueprint): string {
+  const cell = (v: string) => `<Cell><Data ss:Type="String">${escapeHtml(v)}</Data></Cell>`;
+  const row = (cells: string[]) => `<Row>${cells.map(cell).join("")}</Row>`;
+  const stakeholderRows: string[] = [row(["Phase", "Who", "Category", "Responsibility", "When engaged", "Typical cost"])];
+  for (const phase of bp.phases) {
+    for (const s of phase.stakeholders) {
+      stakeholderRows.push(row([phase.name, s.role, s.category, s.responsibility, s.whenEngaged, s.typicalCost || ""]));
+    }
+  }
+  const budgetRows: string[] = [row(["Phase", "Item", "Cost note", "Est. min", "Est. max", "Currency"])];
+  for (const line of bp.budget || []) {
+    budgetRows.push(row([line.phase, line.item, line.costNote, line.estimatedCostMin != null ? String(line.estimatedCostMin) : "", line.estimatedCostMax != null ? String(line.estimatedCostMax) : "", line.currency || ""]));
+  }
+  const sheet = (name: string, rows: string[]) => `<Worksheet ss:Name="${name}"><Table>${rows.join("")}</Table></Worksheet>`;
+  return `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">${sheet("Stakeholders", stakeholderRows)}${sheet("Budget", budgetRows)}</Workbook>`;
+}
+
 function downloadFile(content: string, filename: string, mime: string) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -104,7 +179,9 @@ export default function Home() {
   const [mode, setMode] = useState<"text" | "wizard">("text");
   const [request, setRequest] = useState("");
   const [sector, setSector] = useState("");
+  const [country, setCountry] = useState("Nigeria");
   const [location, setLocation] = useState("Lagos");
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [scale, setScale] = useState(SCALES[1]);
   const [notes, setNotes] = useState("");
   const [accessCode, setAccessCode] = useState("");
@@ -127,6 +204,10 @@ export default function Home() {
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((d: { user: SessionUser | null }) => setUser(d.user))
+      .catch(() => {});
+    fetch("/api/companies")
+      .then((r) => r.json())
+      .then((data: Company[]) => setCompanies(data))
       .catch(() => {});
   }, []);
 
@@ -155,11 +236,21 @@ export default function Home() {
       const res = await fetch("/api/blueprint", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request: text, accessCode: accessCode || undefined }),
+        body: JSON.stringify({
+          request: text,
+          accessCode: accessCode || undefined,
+          country: country !== "Nigeria" ? country : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to generate blueprint");
       setBlueprint(data);
+      if (user) {
+        fetch("/api/auth/me")
+          .then((r) => r.json())
+          .then((d: { user: SessionUser | null }) => setUser(d.user))
+          .catch(() => {});
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -168,7 +259,8 @@ export default function Home() {
   }
 
   function wizardRequest(): string {
-    return `${scale} ${sector} project in ${location}, Nigeria${notes.trim() ? `. ${notes.trim()}` : ""}`;
+    const place = country === "Nigeria" ? `${location}, Nigeria` : country;
+    return `${scale} ${sector} project in ${place}${notes.trim() ? `. ${notes.trim()}` : ""}`;
   }
 
   return (
@@ -180,7 +272,14 @@ export default function Home() {
             <div className="text-sm">
               {user ? (
                 <span className="text-slate-600">
-                  {user.email} · <span className="font-semibold">{user.credits} credits</span>{" "}
+                  {user.email} ·{" "}
+                  <span className="font-semibold">
+                    {user.credits} credit{user.credits === 1 ? "" : "s"}
+                  </span>{" "}
+                  ·{" "}
+                  <a href="/workspace" className="text-blue-600 hover:underline">
+                    My blueprints
+                  </a>
                   <button
                     onClick={() =>
                       fetch("/api/auth/logout", { method: "POST" }).then(() => setUser(null))
@@ -234,6 +333,16 @@ export default function Home() {
                 placeholder='e.g. "Client wants to build a 500kW solar power system in Lagos"'
                 className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-3 shadow-sm focus:border-blue-500 focus:outline-none"
               />
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm shadow-sm"
+                title="Jurisdiction"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
               <button
                 type="submit"
                 disabled={loading || !request.trim()}
@@ -250,7 +359,19 @@ export default function Home() {
               }}
               className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
             >
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-4">
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium text-slate-700">Country</span>
+                  <select
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                  >
+                    {COUNTRIES.map((c) => (
+                      <option key={c}>{c}</option>
+                    ))}
+                  </select>
+                </label>
                 <label className="block text-sm">
                   <span className="mb-1 block font-medium text-slate-700">Industry / sector</span>
                   <select
@@ -266,18 +387,20 @@ export default function Home() {
                     ))}
                   </select>
                 </label>
-                <label className="block text-sm">
-                  <span className="mb-1 block font-medium text-slate-700">Location (state)</span>
-                  <select
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                  >
-                    {NIGERIAN_STATES.map((s) => (
-                      <option key={s}>{s}</option>
-                    ))}
-                  </select>
-                </label>
+                {country === "Nigeria" && (
+                  <label className="block text-sm">
+                    <span className="mb-1 block font-medium text-slate-700">Location (state)</span>
+                    <select
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                    >
+                      {NIGERIAN_STATES.map((s) => (
+                        <option key={s}>{s}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <label className="block text-sm">
                   <span className="mb-1 block font-medium text-slate-700">Project scale</span>
                   <select
@@ -384,6 +507,30 @@ export default function Home() {
                     className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
                   >
                     Budget CSV
+                  </button>
+                  <button
+                    onClick={() =>
+                      downloadFile(
+                        toWordHtml(blueprint),
+                        `${blueprint.industry.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-blueprint.doc`,
+                        "application/msword"
+                      )
+                    }
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
+                  >
+                    Word
+                  </button>
+                  <button
+                    onClick={() =>
+                      downloadFile(
+                        toExcelXml(blueprint),
+                        `${blueprint.industry.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-blueprint.xls`,
+                        "application/vnd.ms-excel"
+                      )
+                    }
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
+                  >
+                    Excel
                   </button>
                   <button
                     onClick={() => window.print()}
@@ -540,6 +687,52 @@ export default function Home() {
                 </>
               )}
             </div>
+
+            {!blueprint.locked && companies.length > 0 && (
+              <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm print:hidden">
+                <h3 className="text-xl font-semibold">Vetted Company Directory</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Companies in our directory matching the stakeholder categories in this blueprint.
+                </p>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-left text-slate-500">
+                        <th className="py-2 pr-3">Company</th>
+                        <th className="py-2 pr-3">Category</th>
+                        <th className="py-2 pr-3">Services</th>
+                        <th className="py-2 pr-3">Location</th>
+                        <th className="py-2">Contact</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {companies
+                        .filter((c) =>
+                          blueprint.phases.some((p) =>
+                            p.stakeholders.some((s) => s.category === c.category)
+                          )
+                        )
+                        .map((c) => (
+                          <tr key={c.id} className="border-b border-slate-100 align-top">
+                            <td className="py-2 pr-3 font-medium">
+                              {c.name}
+                              {c.verified && (
+                                <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                                  Vetted
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2 pr-3">{c.category}</td>
+                            <td className="py-2 pr-3 text-slate-700">{c.services}</td>
+                            <td className="py-2 pr-3 text-slate-700">{c.location}</td>
+                            <td className="py-2 text-slate-700">{c.contact}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </section>
         )}
 

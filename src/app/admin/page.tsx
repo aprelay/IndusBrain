@@ -28,13 +28,52 @@ interface UserRow {
 
 const QUOTE_STATUSES = ["new", "quoted", "invoiced", "paid", "closed"];
 
+const COMPANY_CATEGORIES = [
+  "Legal", "Finance", "Insurance", "Engineering", "Regulatory", "Procurement",
+  "Logistics", "Construction", "Operations", "Advisory", "Government",
+];
+
+interface CompanyRow {
+  id: number;
+  name: string;
+  category: string;
+  services: string;
+  location: string;
+  contact: string;
+  verified: boolean;
+}
+
+interface ApiKeyRow {
+  key: string;
+  name: string;
+  credits: number;
+  createdAt: string;
+}
+
+interface RegulatorAlert {
+  industry: string;
+  regulator: string;
+  lastVerified?: string;
+}
+
+const STALE_MONTHS = 6;
+
+function isStale(lastVerified?: string): boolean {
+  if (!lastVerified) return true;
+  const parsed = new Date(`${lastVerified}-01`);
+  if (Number.isNaN(parsed.getTime())) return true;
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - STALE_MONTHS);
+  return parsed < cutoff;
+}
+
 export default function AdminPage() {
   const [code, setCode] = useState("");
   const [authed, setAuthed] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"industries" | "quotes" | "users" | "audit" | "credits">(
-    "industries"
-  );
+  const [tab, setTab] = useState<
+    "industries" | "quotes" | "users" | "companies" | "apikeys" | "alerts" | "audit" | "credits"
+  >("industries");
 
   const [industriesJson, setIndustriesJson] = useState<IndustryTemplate[]>([]);
   const [editorText, setEditorText] = useState("");
@@ -47,6 +86,19 @@ export default function AdminPage() {
   const [newCreditCode, setNewCreditCode] = useState("");
   const [newCreditAmount, setNewCreditAmount] = useState("10");
   const [newCreditNote, setNewCreditNote] = useState("");
+  const [companies, setCompanies] = useState<CompanyRow[]>([]);
+  const [companyForm, setCompanyForm] = useState({
+    name: "",
+    category: COMPANY_CATEGORIES[0],
+    services: "",
+    location: "",
+    contact: "",
+    verified: false,
+  });
+  const [apiKeys, setApiKeys] = useState<ApiKeyRow[]>([]);
+  const [apiKeyName, setApiKeyName] = useState("");
+  const [apiKeyCredits, setApiKeyCredits] = useState("100");
+  const [newKey, setNewKey] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
   const headers = { "Content-Type": "application/json", "x-admin-code": code };
@@ -59,16 +111,20 @@ export default function AdminPage() {
       return;
     }
     setIndustriesJson(await res.json());
-    const [a, c, q, u] = await Promise.all([
+    const [a, c, q, u, co, k] = await Promise.all([
       fetch("/api/admin/audit", { headers }).then((r) => r.json()),
       fetch("/api/admin/credits", { headers }).then((r) => r.json()),
       fetch("/api/admin/quotes", { headers }).then((r) => r.json()),
       fetch("/api/admin/users", { headers }).then((r) => r.json()),
+      fetch("/api/admin/companies", { headers }).then((r) => r.json()),
+      fetch("/api/admin/apikeys", { headers }).then((r) => r.json()),
     ]);
     setAudit(a);
     setCredits(c);
     setQuotes(q);
     setUsers(u);
+    setCompanies(co);
+    setApiKeys(k);
     setAuthed(true);
   }
 
@@ -137,6 +193,67 @@ export default function AdminPage() {
     if (res.ok) loadAll();
   }
 
+  async function saveCompany() {
+    setStatus(null);
+    const res = await fetch("/api/admin/companies", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(companyForm),
+    });
+    const data = await res.json();
+    setStatus(res.ok ? "Company saved" : data.error || "Failed");
+    if (res.ok) {
+      setCompanyForm({
+        name: "",
+        category: COMPANY_CATEGORIES[0],
+        services: "",
+        location: "",
+        contact: "",
+        verified: false,
+      });
+      loadAll();
+    }
+  }
+
+  async function removeCompany(id: number) {
+    if (!confirm("Delete this company?")) return;
+    await fetch(`/api/admin/companies?id=${id}`, { method: "DELETE", headers });
+    loadAll();
+  }
+
+  async function createKey() {
+    setStatus(null);
+    setNewKey(null);
+    const res = await fetch("/api/admin/apikeys", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name: apiKeyName, credits: Number(apiKeyCredits) }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setNewKey(data.key);
+      setApiKeyName("");
+      loadAll();
+    } else {
+      setStatus(data.error || "Failed");
+    }
+  }
+
+  async function removeKey(key: string) {
+    if (!confirm("Revoke this API key?")) return;
+    await fetch(`/api/admin/apikeys?key=${encodeURIComponent(key)}`, {
+      method: "DELETE",
+      headers,
+    });
+    loadAll();
+  }
+
+  const alerts: RegulatorAlert[] = industriesJson.flatMap((i) =>
+    i.regulators
+      .filter((r) => isStale(r.lastVerified))
+      .map((r) => ({ industry: i.name, regulator: r.name, lastVerified: r.lastVerified }))
+  );
+
   if (!authed) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -173,13 +290,18 @@ export default function AdminPage() {
       <div className="mx-auto max-w-5xl px-4 py-10">
         <h1 className="text-2xl font-bold">IndusBrain Admin</h1>
         <div className="mt-4 flex gap-2">
-          {(["industries", "quotes", "users", "audit", "credits"] as const).map((t) => (
+          {(["industries", "quotes", "users", "companies", "apikeys", "alerts", "audit", "credits"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`rounded-lg px-4 py-2 text-sm font-medium capitalize ${tab === t ? "bg-blue-600 text-white" : "border border-slate-300 bg-white"}`}
             >
-              {t}
+              {t === "apikeys" ? "API keys" : t}
+              {t === "alerts" && alerts.length > 0 && (
+                <span className="ml-1 rounded-full bg-red-600 px-1.5 text-xs text-white">
+                  {alerts.length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -332,6 +454,213 @@ export default function AdminPage() {
                 Add credits
               </button>
             </div>
+          </div>
+        )}
+
+        {tab === "companies" && (
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <div>
+              <h2 className="font-semibold">Company directory ({companies.length})</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Companies shown to clients alongside blueprints, matched by stakeholder category.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {companies.map((c) => (
+                  <li
+                    key={c.id}
+                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-2"
+                  >
+                    <div>
+                      <span className="font-medium">{c.name}</span>{" "}
+                      {c.verified && (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                          Vetted
+                        </span>
+                      )}
+                      <div className="text-xs text-slate-500">
+                        {c.category} · {c.location || "—"} · {c.contact || "—"}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() =>
+                          setCompanyForm({
+                            name: c.name,
+                            category: c.category,
+                            services: c.services,
+                            location: c.location,
+                            contact: c.contact,
+                            verified: c.verified,
+                          })
+                        }
+                        className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100"
+                      >
+                        Copy to form
+                      </button>
+                      <button
+                        onClick={() => removeCompany(c.id)}
+                        className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </li>
+                ))}
+                {companies.length === 0 && (
+                  <li className="text-sm text-slate-500">No companies yet.</li>
+                )}
+              </ul>
+            </div>
+            <div>
+              <h2 className="font-semibold">Add company</h2>
+              <input
+                value={companyForm.name}
+                onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })}
+                placeholder="Company name"
+                className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2"
+              />
+              <select
+                value={companyForm.category}
+                onChange={(e) => setCompanyForm({ ...companyForm, category: e.target.value })}
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2"
+              >
+                {COMPANY_CATEGORIES.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+              <input
+                value={companyForm.services}
+                onChange={(e) => setCompanyForm({ ...companyForm, services: e.target.value })}
+                placeholder="Services offered"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2"
+              />
+              <input
+                value={companyForm.location}
+                onChange={(e) => setCompanyForm({ ...companyForm, location: e.target.value })}
+                placeholder="Location (e.g. Lagos)"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2"
+              />
+              <input
+                value={companyForm.contact}
+                onChange={(e) => setCompanyForm({ ...companyForm, contact: e.target.value })}
+                placeholder="Contact (email/phone/website)"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2"
+              />
+              <label className="mt-2 flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={companyForm.verified}
+                  onChange={(e) => setCompanyForm({ ...companyForm, verified: e.target.checked })}
+                />
+                Vetted / verified company
+              </label>
+              <button
+                onClick={saveCompany}
+                className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                Save company
+              </button>
+            </div>
+          </div>
+        )}
+
+        {tab === "apikeys" && (
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <div>
+              <h2 className="font-semibold">Partner API keys</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Keys for POST /api/v1/blueprint (header x-api-key). Each call consumes 1 credit.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {apiKeys.map((k) => (
+                  <li
+                    key={k.key}
+                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-2"
+                  >
+                    <div>
+                      <span className="font-medium">{k.name}</span>
+                      <div className="font-mono text-xs text-slate-500">
+                        {k.key.slice(0, 10)}… · {k.credits} credits
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeKey(k.key)}
+                      className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                    >
+                      Revoke
+                    </button>
+                  </li>
+                ))}
+                {apiKeys.length === 0 && (
+                  <li className="text-sm text-slate-500">No API keys issued yet.</li>
+                )}
+              </ul>
+            </div>
+            <div>
+              <h2 className="font-semibold">Issue API key</h2>
+              <input
+                value={apiKeyName}
+                onChange={(e) => setApiKeyName(e.target.value)}
+                placeholder="Partner name"
+                className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2"
+              />
+              <input
+                value={apiKeyCredits}
+                onChange={(e) => setApiKeyCredits(e.target.value)}
+                type="number"
+                min={1}
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2"
+              />
+              <button
+                onClick={createKey}
+                className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                Create key
+              </button>
+              {newKey && (
+                <p className="mt-3 break-all rounded-lg bg-amber-50 px-3 py-2 font-mono text-xs text-amber-800">
+                  New key (copy now, shown once in full): {newKey}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {tab === "alerts" && (
+          <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+            <div className="px-4 pt-4">
+              <h2 className="font-semibold">Verification alerts</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Regulator entries with no verification date or last verified more than {STALE_MONTHS}{" "}
+                months ago. Re-check the official source and update lastVerified in the industry
+                JSON.
+              </p>
+            </div>
+            <table className="mt-3 w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-slate-500">
+                  <th className="px-4 py-2">Industry</th>
+                  <th className="px-4 py-2">Regulator</th>
+                  <th className="px-4 py-2">Last verified</th>
+                </tr>
+              </thead>
+              <tbody>
+                {alerts.map((a) => (
+                  <tr key={`${a.industry}-${a.regulator}`} className="border-b border-slate-100">
+                    <td className="px-4 py-2">{a.industry}</td>
+                    <td className="px-4 py-2">{a.regulator}</td>
+                    <td className="px-4 py-2 text-slate-500">{a.lastVerified || "never"}</td>
+                  </tr>
+                ))}
+                {alerts.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-4 text-slate-500">
+                      All regulator entries are verified within the last {STALE_MONTHS} months.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         )}
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createQuoteRequest } from "@/lib/db";
+import { notifyOwner } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -19,5 +20,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Input too long" }, { status: 400 });
   }
   createQuoteRequest({ name, email, company, request });
+  notifyOwner(
+    "New quote request — IndusBrain",
+    `Name: ${name}\nEmail: ${email}\nCompany: ${company}\n\nRequest:\n${request}`
+  );
   return NextResponse.json({ ok: true });
 }

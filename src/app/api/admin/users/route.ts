@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addUserCredits, listUsers } from "@/lib/db";
 import { isAdminAuthorized } from "@/lib/adminAuth";
+import { sendEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -26,5 +27,10 @@ export async function POST(req: NextRequest) {
   }
   const ok = addUserCredits(email, credits);
   if (!ok) return NextResponse.json({ error: "No user with that email" }, { status: 404 });
+  void sendEmail(
+    email,
+    "Blueprint credits added — IndusBrain",
+    `Your payment has been confirmed and ${credits} blueprint credit(s) have been added to your IndusBrain account. Sign in to generate your full blueprints.`
+  );
   return NextResponse.json({ ok: true });
 }

@@ -2,7 +2,10 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 import { AuditEntry, IndustryTemplate } from "@/lib/types";
-import { industries as seedIndustries } from "@/data/industries";
+import { industries as baseIndustries } from "@/data/industries";
+import { extraIndustries } from "@/data/industries-extra";
+
+const seedIndustries = [...baseIndustries, ...extraIndustries];
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 
@@ -47,6 +50,29 @@ function getDb(): Database.Database {
       status TEXT NOT NULL DEFAULT 'new',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS saved_blueprints (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      data TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS companies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      services TEXT NOT NULL DEFAULT '',
+      location TEXT NOT NULL DEFAULT '',
+      contact TEXT NOT NULL DEFAULT '',
+      verified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS api_keys (
+      key TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      credits INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
     CREATE TABLE IF NOT EXISTS audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       request TEXT NOT NULL,
@@ -56,14 +82,11 @@ function getDb(): Database.Database {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
-  const count = (db.prepare("SELECT COUNT(*) AS c FROM industries").get() as { c: number }).c;
-  if (count === 0) {
-    const insert = db.prepare("INSERT INTO industries (id, data) VALUES (?, ?)");
-    const tx = db.transaction((items: IndustryTemplate[]) => {
-      for (const item of items) insert.run(item.id, JSON.stringify(item));
-    });
-    tx(seedIndustries);
-  }
+  const insert = db.prepare("INSERT OR IGNORE INTO industries (id, data) VALUES (?, ?)");
+  const tx = db.transaction((items: IndustryTemplate[]) => {
+    for (const item of items) insert.run(item.id, JSON.stringify(item));
+  });
+  tx(seedIndustries);
   return db;
 }
 
@@ -98,7 +121,9 @@ export function findIndustryInDb(request: string): IndustryTemplate | null {
   const text = request.toLowerCase();
   let best: { template: IndustryTemplate; score: number } | null = null;
   for (const template of listIndustries()) {
-    const score = template.keywords.filter((k) => text.includes(k.toLowerCase())).length;
+    const score = template.keywords
+      .filter((k) => text.includes(k.toLowerCase()))
+      .reduce((sum, k) => sum + k.length, 0);
     if (score > 0 && (!best || score > best.score)) {
       best = { template, score };
     }
@@ -290,4 +315,136 @@ export function listAuditLog(limit = 200): AuditEntry[] {
     ip: r.ip,
     createdAt: r.created_at,
   }));
+}
+
+export interface SavedBlueprintMeta {
+  id: number;
+  title: string;
+  createdAt: string;
+}
+
+export function saveBlueprint(userId: number, title: string, data: string): number {
+  const info = getDb()
+    .prepare("INSERT INTO saved_blueprints (user_id, title, data) VALUES (?, ?, ?)")
+    .run(userId, title, data);
+  return Number(info.lastInsertRowid);
+}
+
+export function listSavedBlueprints(userId: number): SavedBlueprintMeta[] {
+  const rows = getDb()
+    .prepare(
+      "SELECT id, title, created_at FROM saved_blueprints WHERE user_id = ? ORDER BY id DESC"
+    )
+    .all(userId) as { id: number; title: string; created_at: string }[];
+  return rows.map((r) => ({ id: r.id, title: r.title, createdAt: r.created_at }));
+}
+
+export function getSavedBlueprint(userId: number, id: number): string | null {
+  const row = getDb()
+    .prepare("SELECT data FROM saved_blueprints WHERE id = ? AND user_id = ?")
+    .get(id, userId) as { data: string } | undefined;
+  return row ? row.data : null;
+}
+
+export interface Company {
+  id: number;
+  name: string;
+  category: string;
+  services: string;
+  location: string;
+  contact: string;
+  verified: boolean;
+}
+
+export function listCompanies(category?: string): Company[] {
+  const rows = (
+    category
+      ? getDb()
+          .prepare(
+            "SELECT id, name, category, services, location, contact, verified FROM companies WHERE category = ? ORDER BY verified DESC, name"
+          )
+          .all(category)
+      : getDb()
+          .prepare(
+            "SELECT id, name, category, services, location, contact, verified FROM companies ORDER BY category, verified DESC, name"
+          )
+          .all()
+  ) as {
+    id: number;
+    name: string;
+    category: string;
+    services: string;
+    location: string;
+    contact: string;
+    verified: number;
+  }[];
+  return rows.map((r) => ({ ...r, verified: r.verified === 1 }));
+}
+
+export function upsertCompany(c: {
+  id?: number;
+  name: string;
+  category: string;
+  services: string;
+  location: string;
+  contact: string;
+  verified: boolean;
+}): void {
+  if (c.id) {
+    getDb()
+      .prepare(
+        "UPDATE companies SET name = ?, category = ?, services = ?, location = ?, contact = ?, verified = ? WHERE id = ?"
+      )
+      .run(c.name, c.category, c.services, c.location, c.contact, c.verified ? 1 : 0, c.id);
+  } else {
+    getDb()
+      .prepare(
+        "INSERT INTO companies (name, category, services, location, contact, verified) VALUES (?, ?, ?, ?, ?, ?)"
+      )
+      .run(c.name, c.category, c.services, c.location, c.contact, c.verified ? 1 : 0);
+  }
+}
+
+export function deleteCompany(id: number): boolean {
+  return getDb().prepare("DELETE FROM companies WHERE id = ?").run(id).changes > 0;
+}
+
+export interface ApiKey {
+  key: string;
+  name: string;
+  credits: number;
+  createdAt: string;
+}
+
+export function createApiKey(key: string, name: string, credits: number): void {
+  getDb()
+    .prepare("INSERT INTO api_keys (key, name, credits) VALUES (?, ?, ?)")
+    .run(key, name, credits);
+}
+
+export function listApiKeys(): ApiKey[] {
+  const rows = getDb()
+    .prepare("SELECT key, name, credits, created_at FROM api_keys ORDER BY created_at DESC")
+    .all() as { key: string; name: string; credits: number; created_at: string }[];
+  return rows.map((r) => ({ key: r.key, name: r.name, credits: r.credits, createdAt: r.created_at }));
+}
+
+export function addApiKeyCredits(key: string, credits: number): boolean {
+  return (
+    getDb()
+      .prepare("UPDATE api_keys SET credits = credits + ? WHERE key = ?")
+      .run(credits, key).changes > 0
+  );
+}
+
+export function deleteApiKey(key: string): boolean {
+  return getDb().prepare("DELETE FROM api_keys WHERE key = ?").run(key).changes > 0;
+}
+
+export function consumeApiKeyCredit(key: string): boolean {
+  return (
+    getDb()
+      .prepare("UPDATE api_keys SET credits = credits - 1 WHERE key = ? AND credits > 0")
+      .run(key).changes > 0
+  );
 }
