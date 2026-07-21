@@ -284,7 +284,7 @@ export default function AdminPage() {
 
   async function reclassifyUnclassified() {
     setUploading(true);
-    setStatus("Reclassifying… keyword pass + AI pass (up to 2,000 domains per run)");
+    setStatus("Reclassifying… keyword pass + AI pass (up to 400 domains per run)");
     try {
       const res = await fetch("/api/admin/outreach/reclassify", {
         method: "POST",

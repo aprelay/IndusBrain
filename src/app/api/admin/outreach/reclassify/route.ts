@@ -6,7 +6,7 @@ import { isAdminAuthorized } from "@/lib/adminAuth";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const RUN_LIMIT = 2000; // domains per run; click again to continue
+const RUN_LIMIT = 400; // domains per run (keeps each request fast); click again to continue
 
 export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
