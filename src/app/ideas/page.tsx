@@ -44,6 +44,39 @@ function reportToWordHtml(r: IdeaReport): string {
   return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>Idea Engine Report</title></head><body style="font-family:Calibri,Arial,sans-serif">${body}</body></html>`;
 }
 
+function markdownToPrintHtml(md: string, title: string): string {
+  const body = md
+    .split("\n")
+    .map((line) => {
+      if (line.startsWith("# ")) return `<h1>${escapeHtml(line.slice(2))}</h1>`;
+      if (line.startsWith("## ")) return `<h2>${escapeHtml(line.slice(3))}</h2>`;
+      if (line.startsWith("### ")) return `<h3>${escapeHtml(line.slice(4))}</h3>`;
+      if (line.startsWith("- "))
+        return `<p class="li">• ${escapeHtml(line.slice(2)).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")}</p>`;
+      if (line.startsWith("> ")) return `<p class="note">${escapeHtml(line.slice(2))}</p>`;
+      if (/^\d+\. /.test(line))
+        return `<p class="li">${escapeHtml(line).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")}</p>`;
+      const bold = escapeHtml(line).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+      return line.trim() ? `<p>${bold}</p>` : "";
+    })
+    .join("\n");
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
+    body{font-family:Calibri,Arial,sans-serif;color:#0f172a;max-width:760px;margin:32px auto;line-height:1.45}
+    h1{font-size:22pt;border-bottom:2px solid #2563eb;padding-bottom:6px}
+    h2{font-size:15pt;color:#1d4ed8;margin-top:18pt}
+    h3{font-size:12pt;margin-top:10pt}
+    p{margin:4pt 0;font-size:10.5pt}.li{margin:2pt 0 2pt 18pt}.note{color:#64748b;font-style:italic}
+    @media print{body{margin:0}}
+  </style></head><body>${body}<script>window.onload=function(){window.print()}</scr` + `ipt></body></html>`;
+}
+
+function openPdf(md: string, title: string) {
+  const w = window.open("", "_blank");
+  if (!w) return;
+  w.document.write(markdownToPrintHtml(md, title));
+  w.document.close();
+}
+
 function downloadFile(content: string, filename: string, mime: string) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -99,6 +132,7 @@ export default function IdeasPage() {
   const [deepDive, setDeepDive] = useState<IdeaDeepDive | null>(null);
   const [deepDiveFor, setDeepDiveFor] = useState<string | null>(null);
   const [deepDiveError, setDeepDiveError] = useState<string | null>(null);
+  const [authed, setAuthed] = useState(false);
 
   async function loadSaved() {
     try {
@@ -113,9 +147,15 @@ export default function IdeasPage() {
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((d: { user: unknown }) => {
-        if (!d.user) window.location.href = "/login";
+        if (!d.user) {
+          window.location.replace("/login");
+          return;
+        }
+        setAuthed(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        window.location.replace("/login");
+      });
     loadSaved();
     fetch("/api/insights")
       .then((r) => r.json())
@@ -190,6 +230,15 @@ export default function IdeasPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (!authed) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-mark.svg" alt="IndusBrain" className="h-14 w-14 animate-pulse" />
+      </main>
+    );
   }
 
   return (
@@ -396,14 +445,27 @@ export default function IdeasPage() {
               <h2 className="text-xl font-semibold">
                 Execution deep dive: {deepDive.ideaName}
               </h2>
-              <button
-                onClick={() =>
-                  downloadFile(deepDiveToMarkdown(deepDive), "execution-deep-dive.md", "text/markdown")
-                }
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
-              >
-                Download
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() =>
+                    openPdf(
+                      deepDiveToMarkdown(deepDive),
+                      `Execution Deep Dive — ${deepDive.ideaName}`
+                    )
+                  }
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  Download PDF
+                </button>
+                <button
+                  onClick={() =>
+                    downloadFile(deepDiveToMarkdown(deepDive), "execution-deep-dive.md", "text/markdown")
+                  }
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
+                >
+                  Markdown
+                </button>
+              </div>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
               {deepDive.overview && <p className="text-slate-700">{deepDive.overview}</p>}

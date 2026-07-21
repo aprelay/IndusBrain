@@ -33,14 +33,21 @@ export default function OutreachPage() {
   const [accessCode, setAccessCode] = useState("");
   const [exporting, setExporting] = useState(false);
   const [signInRequired, setSignInRequired] = useState(false);
+  const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((d: { user: unknown }) => {
-        if (!d.user) window.location.href = "/login";
+        if (!d.user) {
+          window.location.replace("/login");
+          return;
+        }
+        setAuthed(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        window.location.replace("/login");
+      });
     fetch("/api/outreach?stats=1")
       .then((r) => r.json())
       .then(setStats)
@@ -110,6 +117,15 @@ export default function OutreachPage() {
   }
 
   const totalDomains = stats.reduce((s, x) => s + x.count, 0);
+
+  if (!authed) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-mark.svg" alt="IndusBrain" className="h-14 w-14 animate-pulse" />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">

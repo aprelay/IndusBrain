@@ -192,6 +192,7 @@ export default function Home() {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [quote, setQuote] = useState({ name: "", email: "", company: "", request: "" });
   const [quoteStatus, setQuoteStatus] = useState<string | null>(null);
+  const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
     fetch("/api/industries")
@@ -205,12 +206,15 @@ export default function Home() {
       .then((r) => r.json())
       .then((d: { user: SessionUser | null }) => {
         if (!d.user) {
-          window.location.href = "/login";
+          window.location.replace("/login");
           return;
         }
         setUser(d.user);
+        setAuthed(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        window.location.replace("/login");
+      });
     fetch("/api/companies")
       .then((r) => r.json())
       .then((data: Company[]) => setCompanies(data))
@@ -267,6 +271,15 @@ export default function Home() {
   function wizardRequest(): string {
     const place = country === "Nigeria" ? `${location}, Nigeria` : country;
     return `${scale} ${sector} project in ${place}${notes.trim() ? `. ${notes.trim()}` : ""}`;
+  }
+
+  if (!authed) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-mark.svg" alt="IndusBrain" className="h-14 w-14 animate-pulse" />
+      </main>
+    );
   }
 
   return (
