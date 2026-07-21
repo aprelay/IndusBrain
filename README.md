@@ -1,36 +1,23 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Industry Ecosystem Brain
 
-## Getting Started
+Type any client request (e.g. "build a solar power system in Lagos") and get a complete downloadable blueprint of every company, professional and regulator involved — lawyers, banks, insurers, engineers, surveyors, importers, clearing agents, logistics, and more.
 
-First, run the development server:
+## How it works (hybrid engine)
+
+1. **Curated knowledge base** — structured ecosystem maps in `src/data/industries.ts` (solar power, construction, agro-processing, importation, oil & gas, telecom/ICT, healthcare, manufacturing). Requests matching these industries return the curated blueprint instantly.
+2. **AI fallback** — any request that doesn't match a curated industry is sent to OpenAI to generate a blueprint in the same structured format. Requires `OPENAI_API_KEY`.
+3. **Download** — every blueprint can be downloaded as Markdown or printed/saved as PDF.
+
+## Setup
 
 ```bash
+npm install
+cp .env.example .env.local   # add OPENAI_API_KEY for the AI fallback (optional)
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Adding industries
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Add a new `IndustryTemplate` entry to `src/data/industries.ts` with keywords, phases, stakeholders, regulators, risks, and payment points.
