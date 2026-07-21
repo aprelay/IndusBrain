@@ -282,6 +282,26 @@ export default function AdminPage() {
     await uploadDomains(text);
   }
 
+  async function reclassifyUnclassified() {
+    setUploading(true);
+    setStatus("Reclassifying… keyword pass + AI pass (up to 2,000 domains per run)");
+    try {
+      const res = await fetch("/api/admin/outreach/reclassify", {
+        method: "POST",
+        headers,
+      });
+      const data = await res.json();
+      setStatus(
+        res.ok
+          ? `Processed ${data.processed} — reclassified ${data.reclassified} (${data.byKeywords} by keywords, ${data.byAI} by AI). ${data.remaining === 0 ? "All done." : "More remaining — click again to continue."}`
+          : data.error || "Reclassify failed"
+      );
+      if (res.ok) loadAll();
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function removeOutreachIndustry(industry: string) {
     if (!confirm(`Delete all '${industry}' domains?`)) return;
     await fetch(`/api/admin/outreach?industry=${encodeURIComponent(industry)}`, {
@@ -473,10 +493,21 @@ export default function AdminPage() {
               </div>
             </div>
             <div>
-              <h2 className="font-semibold">
-                Database ({outreachStats.reduce((s, x) => s + x.count, 0).toLocaleString()}{" "}
-                domains)
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold">
+                  Database ({outreachStats.reduce((s, x) => s + x.count, 0).toLocaleString()}{" "}
+                  domains)
+                </h2>
+                {(outreachStats.find((s) => s.industry === "unclassified")?.count || 0) > 0 && (
+                  <button
+                    onClick={reclassifyUnclassified}
+                    disabled={uploading}
+                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {uploading ? "Working…" : "🧠 Reclassify unclassified (AI)"}
+                  </button>
+                )}
+              </div>
               <ul className="mt-3 space-y-2">
                 {outreachStats.map((s) => (
                   <li

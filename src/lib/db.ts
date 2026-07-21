@@ -603,6 +603,27 @@ export function countBrainMemory(): number {
   return (getDb().prepare("SELECT COUNT(*) AS n FROM brain_memory").get() as { n: number }).n;
 }
 
+export function listUnclassifiedDomains(limit: number): string[] {
+  return (
+    getDb()
+      .prepare(
+        "SELECT domain FROM outreach_domains WHERE industry = 'unclassified' ORDER BY id LIMIT ?"
+      )
+      .all(limit) as { domain: string }[]
+  ).map((r) => r.domain);
+}
+
+export function updateDomainIndustries(entries: { domain: string; industry: string }[]): number {
+  const d = getDb();
+  const update = d.prepare("UPDATE outreach_domains SET industry = ? WHERE domain = ?");
+  let changed = 0;
+  const tx = d.transaction((items: typeof entries) => {
+    for (const e of items) changed += update.run(e.industry, e.domain).changes;
+  });
+  tx(entries);
+  return changed;
+}
+
 export function deleteOutreachIndustry(industry: string): number {
   return getDb()
     .prepare("DELETE FROM outreach_domains WHERE industry = ?")
