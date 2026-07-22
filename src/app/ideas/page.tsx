@@ -116,6 +116,7 @@ export default function IdeasPage() {
   const [deepDiveFor, setDeepDiveFor] = useState<string | null>(null);
   const [deepDiveError, setDeepDiveError] = useState<string | null>(null);
   const [authed, setAuthed] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
 
   async function loadSaved() {
     try {
@@ -644,20 +645,27 @@ export default function IdeasPage() {
 
         {saved.length > 0 && (
           <section className="mt-10">
-            <h2 className="mb-3 text-lg font-semibold">My saved idea reports</h2>
-            <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
-              {saved.map((s) => (
-                <li key={s.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                  <span>{s.title}</span>
-                  <button
-                    onClick={() => openSaved(s.id)}
-                    className="text-blue-600 hover:underline"
-                  >
-                    Open
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <button
+              onClick={() => setShowSaved((v) => !v)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
+            >
+              {showSaved ? "Hide" : "📁 My saved idea reports"} ({saved.length})
+            </button>
+            {showSaved && (
+              <ul className="mt-3 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+                {saved.map((s) => (
+                  <li key={s.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                    <span>{s.title}</span>
+                    <button
+                      onClick={() => openSaved(s.id)}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Open
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         )}
       </div>
