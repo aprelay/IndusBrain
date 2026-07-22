@@ -18,10 +18,21 @@ export interface IdeaConcept {
   opportunityScore: number;
 }
 
+export interface SurroundingOpportunity {
+  name: string;
+  type: string;
+  description: string;
+  whoBuys: string;
+  startupCost: string;
+  marketGap: string;
+  outreachIndustry: string;
+}
+
 export interface IdeaReport {
   brief: string;
   country?: string;
   ideas: IdeaConcept[];
+  surroundingOpportunities: SurroundingOpportunity[];
   generatedAt: string;
 }
 
@@ -51,6 +62,22 @@ Respond ONLY with JSON matching this TypeScript type (no markdown fences):
 }
 Return exactly 3 ideas.`;
 
+const SURROUNDING_SYSTEM_PROMPT = `You are the value-chain engine of an industry-ecosystem intelligence platform. Given a business brief, map the ENTIRE surrounding business ecosystem: every supplier, service, trade, input, downstream and support business that the main activity creates demand for. Example: "build a house" surfaces block/cement suppliers, roofing sheet sellers, plumbing suppliers, electrical contractors, window/door fabricators, painters, furniture makers, security services, landscaping, property management, and more. Each entry is itself a business opportunity someone could start. Be concrete and jurisdiction-specific.
+
+Respond ONLY with JSON matching this TypeScript type (no markdown fences):
+{
+  "opportunities": [{
+    "name": string,            // the surrounding business, e.g. "Roofing sheet supply & installation"
+    "type": string,            // one of: supplier, service, trade/contractor, downstream, support, logistics, finance
+    "description": string,     // what the business does and how it plugs into the main activity
+    "whoBuys": string,         // who pays this business and when in the project cycle
+    "startupCost": string,     // rough capital band to start, local currency or USD
+    "marketGap": string,       // the current gap/underserved angle in the target jurisdiction
+    "outreachIndustry": string // ONE category from: construction, real estate, energy & solar, oil & gas, agriculture, food & beverage, healthcare & pharma, finance & fintech, insurance, legal, logistics & transport, manufacturing, mining, technology & ict, telecom, education, hospitality & tourism, retail & ecommerce, media & marketing, automotive, aviation, maritime, engineering, security, environmental, non-profit, professional services
+  }]
+}
+Return 12-18 opportunities covering the full value chain: inputs/suppliers, trades, services, downstream and support businesses.`;
+
 function asStringArray(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 }
@@ -71,27 +98,59 @@ export async function generateIdeas(
     : brief;
   const userContent = memoryContext ? `${base}${memoryContext}` : base;
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-        messages: [
-          { role: "system", content: IDEA_SYSTEM_PROMPT },
-          { role: "user", content: userContent },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.9,
-      }),
-    });
+    const call = (system: string, user: string, temperature: number) =>
+      fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+          response_format: { type: "json_object" },
+          temperature,
+          max_tokens: 4000,
+        }),
+      });
+    const surroundingUser = country
+      ? `${brief}\n\nTarget jurisdiction: ${country}. Ground costs and gaps in ${country}.`
+      : brief;
+    const [res, surRes] = await Promise.all([
+      call(IDEA_SYSTEM_PROMPT, userContent, 0.9),
+      call(SURROUNDING_SYSTEM_PROMPT, surroundingUser, 0.7).catch(() => null),
+    ]);
     if (!res.ok) return null;
     const data = await res.json();
     const content = data.choices?.[0]?.message?.content;
     if (!content) return null;
     const parsed = JSON.parse(content);
+    let surroundingOpportunities: SurroundingOpportunity[] = [];
+    if (surRes && surRes.ok) {
+      try {
+        const surData = await surRes.json();
+        const surContent = surData.choices?.[0]?.message?.content;
+        const surParsed = surContent ? JSON.parse(surContent) : null;
+        if (Array.isArray(surParsed?.opportunities)) {
+          surroundingOpportunities = surParsed.opportunities
+            .filter((o: Partial<SurroundingOpportunity>) => typeof o?.name === "string")
+            .map((o: Partial<SurroundingOpportunity>) => ({
+              name: o.name as string,
+              type: asString(o.type),
+              description: asString(o.description),
+              whoBuys: asString(o.whoBuys),
+              startupCost: asString(o.startupCost),
+              marketGap: asString(o.marketGap),
+              outreachIndustry: asString(o.outreachIndustry),
+            }));
+        }
+      } catch {
+        surroundingOpportunities = [];
+      }
+    }
     if (!Array.isArray(parsed?.ideas) || parsed.ideas.length === 0) return null;
     const ideas: IdeaConcept[] = parsed.ideas
       .filter(
@@ -121,7 +180,13 @@ export async function generateIdeas(
             : 0,
       }));
     if (ideas.length === 0) return null;
-    return { brief, country, ideas, generatedAt: new Date().toISOString() };
+    return {
+      brief,
+      country,
+      ideas,
+      surroundingOpportunities,
+      generatedAt: new Date().toISOString(),
+    };
   } catch {
     return null;
   }
@@ -334,5 +399,22 @@ export function ideaReportToMarkdown(r: IdeaReport): string {
     i.firstSteps.forEach((e, k) => lines.push(`${k + 1}. ${e}`));
     lines.push("");
   });
+  if (r.surroundingOpportunities?.length) {
+    lines.push(
+      `## Surrounding opportunity ecosystem`,
+      "",
+      `Every project creates demand for dozens of other businesses. These are the opportunities surrounding "${r.brief}":`,
+      ""
+    );
+    r.surroundingOpportunities.forEach((o, k) => {
+      lines.push(`### ${k + 1}. ${o.name}${o.type ? ` (${o.type})` : ""}`);
+      if (o.description) lines.push(o.description);
+      if (o.whoBuys) lines.push(`- **Who pays you:** ${o.whoBuys}`);
+      if (o.startupCost) lines.push(`- **Startup cost:** ${o.startupCost}`);
+      if (o.marketGap) lines.push(`- **Market gap:** ${o.marketGap}`);
+      if (o.outreachIndustry) lines.push(`- **Outreach category:** ${o.outreachIndustry}`);
+      lines.push("");
+    });
+  }
   return lines.join("\n");
 }

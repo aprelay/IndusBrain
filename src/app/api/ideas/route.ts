@@ -51,6 +51,7 @@ function toPreview(report: IdeaReport): IdeaReport {
       assumptions: [],
       firstSteps: [],
     })),
+    surroundingOpportunities: [],
   };
 }
 
