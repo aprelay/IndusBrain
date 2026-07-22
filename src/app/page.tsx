@@ -286,46 +286,54 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-5xl px-4 py-10">
         <header className="mb-8 print:hidden">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+            <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-mark.svg" alt="IndusBrain" className="h-10 w-10" />
-              <h1 className="text-3xl font-bold tracking-tight">Industry Ecosystem Brain</h1>
-              <a href="/ideas" className="text-sm font-semibold text-blue-600 hover:underline">
+              <img src="/logo-mark.svg" alt="IndusBrain" className="h-9 w-9" />
+              <h1 className="text-2xl font-bold tracking-tight">Industry Ecosystem Brain</h1>
+            </div>
+            <nav className="flex items-center gap-2 text-sm">
+              <a
+                href="/ideas"
+                className="rounded-lg px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-100"
+              >
                 💡 Idea Engine
               </a>
-              <a href="/outreach" className="text-sm font-semibold text-blue-600 hover:underline">
+              <a
+                href="/outreach"
+                className="rounded-lg px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-100"
+              >
                 📡 Outreach
               </a>
-            </div>
-            <div className="text-sm">
               {user ? (
-                <span className="text-slate-600">
-                  {user.email} ·{" "}
-                  <span className="font-semibold">
-                    {user.credits} credit{user.credits === 1 ? "" : "s"}
-                  </span>{" "}
-                  ·{" "}
-                  <a href="/workspace" className="text-blue-600 hover:underline">
+                <>
+                  <a
+                    href="/workspace"
+                    className="rounded-lg px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-100"
+                  >
                     My blueprints
                   </a>
+                  <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700">
+                    {user.credits} credit{user.credits === 1 ? "" : "s"}
+                  </span>
                   <button
                     onClick={() =>
                       fetch("/api/auth/logout", { method: "POST" }).then(() => setUser(null))
                     }
-                    className="ml-2 text-blue-600 hover:underline"
+                    title={user.email}
+                    className="rounded-lg px-3 py-1.5 text-slate-500 hover:bg-slate-100"
                   >
                     Sign out
                   </button>
-                </span>
+                </>
               ) : (
-                <a href="/login" className="text-blue-600 hover:underline">
+                <a href="/login" className="rounded-lg px-3 py-1.5 font-medium text-blue-600 hover:bg-slate-100">
                   Sign in / Register
                 </a>
               )}
-            </div>
+            </nav>
           </div>
-          <p className="mt-2 text-slate-600">
+          <p className="mt-4 text-slate-600">
             Type any client request — or use the guided wizard — and get a complete blueprint of
             every company, professional and regulator involved: lawyers, banks, insurers, engineers,
             surveyors, importers, clearing agents, logistics and more.
