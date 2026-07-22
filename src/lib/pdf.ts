@@ -8,6 +8,13 @@ function stripBold(s: string): string {
   return s.replace(/\*\*(.+?)\*\*/g, "$1");
 }
 
+function sanitize(s: string): string {
+  return s
+    .replace(/\u20a6/g, "NGN ")
+    .replace(/\u20b5/g, "GHS ")
+    .replace(/[^\u0000-\u00ff\u2010-\u2027\u20ac]/g, "");
+}
+
 /** Renders markdown (the subset our reports use) into a PDF buffer. */
 export function markdownToPdf(md: string, title: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -21,7 +28,7 @@ export function markdownToPdf(md: string, title: string): Promise<Buffer> {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    for (const raw of md.split("\n")) {
+    for (const raw of sanitize(md).split("\n")) {
       const line = raw.trimEnd();
       if (!line.trim()) {
         doc.moveDown(0.4);
