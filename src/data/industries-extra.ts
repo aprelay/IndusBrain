@@ -1867,4 +1867,772 @@ export const extraIndustries: IndustryTemplate[] = [
     },
     approvalsDeliverables: ["Excise factory licence", "NAFDAC product registrations", "Environmental permit"],
   }),
+  buildTemplate({
+    id: "capital-markets",
+    name: "Capital Markets / Securities Firm",
+    isicCode: "K6612",
+    keywords: ["stockbroker", "securities", "capital market", "fund manager", "asset management", "investment bank", "broker dealer"],
+    summary:
+      "Ecosystem for setting up an SEC-registered capital market operator in Nigeria: broker/dealer, fund/portfolio manager or issuing house.",
+    regulators: [
+      reg("Securities and Exchange Commission (SEC)", "Registration of capital market operators and sponsored individuals.", "Investments and Securities Act 2025", "https://sec.gov.ng"),
+      reg("Nigerian Exchange (NGX) / FMDQ", "Dealing membership and market access.", "NGX Rulebook", "https://ngxgroup.com"),
+      CAC,
+      FIRS,
+    ],
+    risks: ["Minimum capital and fidelity bond requirements", "Sponsored-individual examinations and approvals", "Market volatility and client claims", "AML/CFT compliance obligations"],
+    paymentPoints: ["SEC registration and processing fees", "NGX/FMDQ membership fees", "Fidelity bond premium to insurer", "Compliance officer and sponsored individuals' salaries"],
+    specialists: {
+      design: [
+        { role: "Capital Markets Solicitor", category: "Legal", responsibility: "SEC registration filings, compliance manuals, board structures.", whenEngaged: "At incorporation" },
+        { role: "Compliance Consultant", category: "Regulatory", responsibility: "AML/CFT program, SEC rulebook compliance, returns.", whenEngaged: "Before licence application" },
+      ],
+      implementation: [
+        { role: "Trading Technology Vendor", category: "Procurement", responsibility: "Order management system, NGX/FMDQ connectivity, client portal.", whenEngaged: "After approval in principle" },
+      ],
+      operations: [
+        { role: "Sponsored Individuals (dealers/fund managers)", category: "Operations", responsibility: "Licensed trading and portfolio management activity.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["SEC operator registration", "Exchange dealing membership", "Fidelity bond"],
+    importHeavy: false,
+  }),
+  buildTemplate({
+    id: "crypto-vasp",
+    name: "Crypto / Virtual Asset Service Provider",
+    isicCode: "K6499",
+    keywords: ["crypto", "cryptocurrency", "virtual asset", "vasp", "digital asset", "exchange", "blockchain", "web3"],
+    summary:
+      "Ecosystem for launching an SEC-registered virtual asset service provider (exchange, custodian or offering platform) in Nigeria.",
+    regulators: [
+      reg("Securities and Exchange Commission (SEC)", "VASP/DAX/DAC registration under the Digital Assets Rules and ARIP.", "Investments and Securities Act 2025; SEC Digital Assets Rules", "https://sec.gov.ng"),
+      reg("Central Bank of Nigeria (CBN)", "Banking relationships and naira on/off-ramp compliance.", "CBN Guidelines on VASP bank accounts 2023", "https://www.cbn.gov.ng"),
+      reg("Nigerian Financial Intelligence Unit (NFIU)", "AML/CFT registration and suspicious transaction reporting.", "MLPPA 2022", "https://www.nfiu.gov.ng"),
+      CAC,
+    ],
+    risks: ["Regulatory change risk in digital assets", "High minimum paid-up capital", "Custody/security breaches and hacks", "Banking partner de-risking"],
+    paymentPoints: ["SEC application and registration fees", "Legal and compliance advisory fees", "Custody technology and security audits", "Insurance for digital asset custody"],
+    specialists: {
+      design: [
+        { role: "Fintech/Digital Asset Lawyer", category: "Legal", responsibility: "SEC ARIP/VASP filings, terms of service, token classification opinions.", whenEngaged: "Before launch" },
+        { role: "Blockchain Architect", category: "Engineering", responsibility: "Exchange/custody architecture, wallet security, smart-contract audits.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Cybersecurity Auditor", category: "Advisory", responsibility: "Penetration testing, SOC controls, ISO 27001 alignment.", whenEngaged: "Pre-launch and annually" },
+      ],
+      operations: [
+        { role: "Compliance/MLRO Officer", category: "Regulatory", responsibility: "KYC/AML monitoring, NFIU reports, SEC returns.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["SEC VASP registration / ARIP approval", "NFIU registration", "AML/CFT program sign-off"],
+    importHeavy: false,
+  }),
+  buildTemplate({
+    id: "ppp-infrastructure",
+    name: "Roads & PPP Infrastructure",
+    isicCode: "F4210",
+    keywords: ["road", "highway", "bridge", "ppp", "concession", "toll", "infrastructure", "public private partnership"],
+    summary:
+      "Ecosystem for delivering road/bridge or other PPP infrastructure concessions in Nigeria from outline business case to tolling operations.",
+    regulators: [
+      reg("Infrastructure Concession Regulatory Commission (ICRC)", "PPP project approval, outline/full business case certification.", "ICRC Act 2005", "https://www.icrc.gov.ng"),
+      reg("Federal Ministry of Works", "Road design standards and federal road approvals.", "Federal Highways Act", "https://worksandhousing.gov.ng"),
+      reg("Bureau of Public Procurement (BPP)", "Procurement compliance for public-sector counterparties.", "Public Procurement Act 2007", "https://www.bpp.gov.ng"),
+      NESREA,
+    ],
+    risks: ["Political/change-of-government risk on concessions", "Right-of-way acquisition and community disputes", "Traffic/toll revenue below forecast", "FX risk on financing"],
+    paymentPoints: ["Transaction advisers paid through business case stages", "EIA consultants before construction", "Contractors by certified milestones", "Independent engineer during O&M"],
+    specialists: {
+      design: [
+        { role: "Transaction Adviser (PPP)", category: "Advisory", responsibility: "Outline/full business case, financial structuring, ICRC process.", whenEngaged: "Project inception", typicalCost: "Success + retainer fees" },
+        { role: "Highway Design Engineer (COREN)", category: "Engineering", responsibility: "Road/bridge design to FMW standards.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Civil Works Contractor", category: "Construction", responsibility: "Road construction, drainage, structures.", whenEngaged: "After financial close", typicalCost: "Largest single cost item" },
+      ],
+      operations: [
+        { role: "Toll/Concession Operator", category: "Operations", responsibility: "Tolling, maintenance and concession reporting.", whenEngaged: "From commissioning" },
+      ],
+    },
+    approvalsDeliverables: ["ICRC OBC/FBC certificates", "FEC/state executive approval", "EIA approval", "Right-of-way acquisition"],
+  }),
+  buildTemplate({
+    id: "ipp-power-plant",
+    name: "Independent Power Plant (IPP)",
+    isicCode: "D3510",
+    keywords: ["ipp", "power plant", "gas turbine", "thermal power", "electricity generation", "embedded generation", "genco"],
+    summary:
+      "Ecosystem for developing a gas-fired or embedded independent power plant in Nigeria, from licensing through PPA and operations.",
+    regulators: [
+      reg("Nigerian Electricity Regulatory Commission (NERC)", "Generation licence, tariff and market rules.", "Electricity Act 2023", "https://nerc.gov.ng"),
+      reg("Nigerian Midstream & Downstream Petroleum Regulatory Authority (NMDPRA)", "Gas supply and midstream permits.", "Petroleum Industry Act 2021", "https://www.nmdpra.gov.ng"),
+      reg("Nigerian Bulk Electricity Trading (NBET) / DisCos", "Power purchase agreements and offtake.", "EPSR framework", "https://nbet.com.ng"),
+      NESREA,
+    ],
+    risks: ["Gas supply interruptions", "Offtaker (DisCo/NBET) payment risk", "Grid instability and curtailment", "FX exposure on turbines and spares"],
+    paymentPoints: ["NERC licence fees", "Gas supply agreement payments", "EPC contractor milestones", "O&M contractor fees from COD"],
+    specialists: {
+      design: [
+        { role: "Power Engineer (COREN)", category: "Engineering", responsibility: "Plant design, grid interconnection studies, protection.", whenEngaged: "Feasibility and design" },
+        { role: "Energy Lawyer", category: "Legal", responsibility: "PPA, gas supply agreement, interconnection agreements.", whenEngaged: "Before financial close" },
+      ],
+      implementation: [
+        { role: "EPC Contractor (power)", category: "Construction", responsibility: "Engineering, procurement and construction of the plant.", whenEngaged: "After financial close", typicalCost: "Largest single cost item" },
+      ],
+      operations: [
+        { role: "O&M Operator (power)", category: "Operations", responsibility: "Plant operations, dispatch compliance, maintenance.", whenEngaged: "From COD" },
+      ],
+    },
+    approvalsDeliverables: ["NERC generation licence", "Grid connection approval", "EIA approval", "Executed PPA and GSA"],
+  }),
+  buildTemplate({
+    id: "ev-charging-assembly",
+    name: "EV Assembly & Charging Infrastructure",
+    isicCode: "C2910",
+    keywords: ["electric vehicle", "ev", "charging station", "e-mobility", "battery swap", "electric bus", "ev assembly"],
+    summary:
+      "Ecosystem for electric-vehicle assembly or charging/battery-swap infrastructure in Nigeria under the national automotive policy.",
+    regulators: [
+      reg("National Automotive Design and Development Council (NADDC)", "Automotive assembly licensing and EV policy incentives.", "NADDC Act", "https://naddc.gov.ng"),
+      reg("Nigerian Electricity Regulatory Commission (NERC)", "Permits for charging supply and embedded generation.", "Electricity Act 2023", "https://nerc.gov.ng"),
+      SON,
+      FIRS,
+    ],
+    risks: ["Grid reliability for charging uptime", "Battery import duties and logistics", "Low early EV adoption", "Technology/standard changes"],
+    paymentPoints: ["NADDC licensing and SON certification fees", "Site leases for charging locations", "Equipment import duties and clearing", "Electricity supply agreements"],
+    specialists: {
+      design: [
+        { role: "E-mobility Engineer", category: "Engineering", responsibility: "Charger siting, load studies, assembly line design.", whenEngaged: "Feasibility and design" },
+      ],
+      implementation: [
+        { role: "Electrical Installation Contractor", category: "Construction", responsibility: "Charger installation, substation and metering works.", whenEngaged: "Rollout" },
+      ],
+      operations: [
+        { role: "Network Operations Team", category: "Operations", responsibility: "Charger uptime, payments platform, fleet support.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["NADDC assembly licence (if assembling)", "SON standards certification", "NERC/DisCo supply approvals"],
+  }),
+  buildTemplate({
+    id: "free-zone-enterprise",
+    name: "Free Zone Enterprise",
+    isicCode: "N8299",
+    keywords: ["free zone", "export processing zone", "epz", "nepza", "free trade zone", "lekki free zone"],
+    summary:
+      "Ecosystem for registering and operating an enterprise inside a Nigerian free trade zone with duty and tax incentives.",
+    regulators: [
+      reg("Nigeria Export Processing Zones Authority (NEPZA)", "Free zone enterprise registration and operating licence.", "NEPZA Act 1992", "https://www.nepza.gov.ng"),
+      reg("Nigeria Customs Service (Free Zone Command)", "Goods movement in/out of the zone.", "Customs & Excise Management Act", "https://customs.gov.ng"),
+      CAC,
+      FIRS,
+    ],
+    risks: ["Zone infrastructure/power reliability", "Customs processing delays at zone gates", "Restrictions on customs-territory sales", "Policy changes to incentives"],
+    paymentPoints: ["NEPZA registration and annual licence fees", "Zone management land/factory lease", "Customs documentation at each import/export", "Zone service charges"],
+    specialists: {
+      design: [
+        { role: "Free Zone Consultant", category: "Advisory", responsibility: "Zone selection, licence application, incentive structuring.", whenEngaged: "At planning" },
+      ],
+      implementation: [
+        { role: "Factory Fit-out Contractor", category: "Construction", responsibility: "Warehouse/factory construction or fit-out inside the zone.", whenEngaged: "After licence" },
+      ],
+      operations: [
+        { role: "Customs Liaison Officer", category: "Logistics", responsibility: "Zone customs documentation and goods movements.", whenEngaged: "Ongoing" },
+      ],
+    },
+    approvalsDeliverables: ["NEPZA operating licence", "Zone lease agreement", "Customs free-zone registration"],
+  }),
+  buildTemplate({
+    id: "shipping-maritime",
+    name: "Shipping & Maritime Logistics",
+    isicCode: "H5012",
+    keywords: ["shipping", "maritime", "vessel", "cabotage", "barge", "terminal", "ship owner", "freight"],
+    summary:
+      "Ecosystem for vessel ownership, cabotage trade or maritime logistics services in Nigerian waters.",
+    regulators: [
+      reg("Nigerian Maritime Administration and Safety Agency (NIMASA)", "Vessel registration, cabotage licensing, seafarer certification.", "NIMASA Act 2007; Cabotage Act 2003", "https://nimasa.gov.ng"),
+      reg("Nigerian Ports Authority (NPA)", "Port access, berthing and towage approvals.", "NPA Act", "https://nigerianports.gov.ng"),
+      reg("Nigerian Shippers' Council", "Freight rates and shipper protection.", "NSC Act", "https://shipperscouncil.gov.ng"),
+      CAC,
+    ],
+    risks: ["Vessel financing costs and FX", "Cabotage waiver competition from foreign vessels", "Piracy/security in Gulf of Guinea", "Port congestion and demurrage"],
+    paymentPoints: ["NIMASA registration and cabotage fees", "Marine insurance (hull & machinery, P&I)", "Dry-docking and classification fees", "Crew wages and port charges"],
+    specialists: {
+      design: [
+        { role: "Maritime Lawyer", category: "Legal", responsibility: "Vessel purchase/charter contracts, flag registration, cabotage compliance.", whenEngaged: "Before acquisition" },
+        { role: "Marine Surveyor", category: "Engineering", responsibility: "Pre-purchase condition survey and valuations.", whenEngaged: "Before purchase" },
+      ],
+      implementation: [
+        { role: "Ship Chandler / Dockyard", category: "Procurement", responsibility: "Vessel refit, spares and provisioning.", whenEngaged: "Acquisition and dry-dock" },
+      ],
+      operations: [
+        { role: "Ship Manager / Crewing Agency", category: "Operations", responsibility: "Technical management, crewing, ISM compliance.", whenEngaged: "From delivery" },
+      ],
+    },
+    approvalsDeliverables: ["NIMASA vessel registration", "Cabotage licence", "Safety certificates (ISM/ISPS)"],
+  }),
+  buildTemplate({
+    id: "courier-logistics",
+    name: "Courier & Last-Mile Delivery",
+    isicCode: "H5320",
+    keywords: ["courier", "delivery", "last mile", "dispatch", "logistics company", "parcel", "dispatch rider"],
+    summary:
+      "Ecosystem for a licensed courier and last-mile delivery company in Nigeria, from CRD licence to fleet operations.",
+    regulators: [
+      reg("Courier Regulatory Department (NIPOST/CRD)", "Courier operator licensing by category.", "NIPOST Act", "https://nipost.gov.ng"),
+      reg("Federal Road Safety Corps (FRSC)", "Vehicle/rider licensing and safety compliance.", "FRSC Act 2007", "https://frsc.gov.ng"),
+      CAC,
+      FIRS,
+    ],
+    risks: ["Rider churn and theft of parcels", "State-level okada/dispatch restrictions", "Fuel price volatility", "COD cash handling risk"],
+    paymentPoints: ["CRD licence fee by category", "Fleet purchase/lease payments", "Goods-in-transit insurance", "Rider wages and commissions"],
+    specialists: {
+      design: [
+        { role: "Logistics Technology Vendor", category: "Procurement", responsibility: "Dispatch app, route optimization, tracking.", whenEngaged: "Before launch" },
+      ],
+      implementation: [
+        { role: "Fleet Procurement Agent", category: "Procurement", responsibility: "Bikes/vans sourcing, registration, branding.", whenEngaged: "Fleet build-out" },
+      ],
+      operations: [
+        { role: "Fleet/Operations Manager", category: "Operations", responsibility: "Rider management, SLAs, COD reconciliation.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["CRD courier licence", "Vehicle registrations", "Goods-in-transit insurance"],
+    importHeavy: false,
+  }),
+  buildTemplate({
+    id: "pension-fund-administrator",
+    name: "Pension Fund Administrator (PFA)",
+    isicCode: "K6530",
+    keywords: ["pension", "pfa", "retirement", "pension fund", "pencom"],
+    summary:
+      "Ecosystem for licensing and operating a Pension Fund Administrator under Nigeria's contributory pension scheme.",
+    regulators: [
+      reg("National Pension Commission (PenCom)", "PFA licensing, investment regulation and supervision.", "Pension Reform Act 2014", "https://www.pencom.gov.ng"),
+      CAC,
+      FIRS,
+    ],
+    risks: ["High minimum share capital requirement", "Investment performance and compliance breaches", "RSA transfer competition", "Cybersecurity of contributor data"],
+    paymentPoints: ["PenCom application and licensing fees", "Custodian (PFC) fees", "Core pension administration software", "Compliance and audit costs"],
+    specialists: {
+      design: [
+        { role: "Pension/Financial Services Lawyer", category: "Legal", responsibility: "Licence application, trust structures, agreements with PFC.", whenEngaged: "At formation" },
+        { role: "Actuary", category: "Advisory", responsibility: "Fund modelling and valuation support.", whenEngaged: "Setup and annually" },
+      ],
+      implementation: [
+        { role: "Pension Administration Software Vendor", category: "Procurement", responsibility: "RSA management platform, PenCom reporting.", whenEngaged: "Before launch" },
+      ],
+      operations: [
+        { role: "Fund Investment Team", category: "Operations", responsibility: "Portfolio management within PenCom investment regulation.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["PenCom PFA licence", "PFC custody agreement", "Approved compliance framework"],
+    importHeavy: false,
+  }),
+  buildTemplate({
+    id: "bureau-de-change",
+    name: "Bureau de Change / FX Services",
+    isicCode: "K6619",
+    keywords: ["bureau de change", "bdc", "forex", "fx", "currency exchange", "money changer"],
+    summary:
+      "Ecosystem for a CBN-licensed bureau de change operating under the revised BDC guidelines.",
+    regulators: [
+      reg("Central Bank of Nigeria (CBN)", "BDC licensing, capital requirements and FX regulations.", "CBN BDC Guidelines 2024; BOFIA 2020", "https://www.cbn.gov.ng"),
+      reg("Nigerian Financial Intelligence Unit (NFIU)", "AML/CFT registration and reporting.", "MLPPA 2022", "https://www.nfiu.gov.ng"),
+      CAC,
+    ],
+    risks: ["Regulatory tightening and licence revocations", "FX volatility and position losses", "AML/CFT compliance breaches", "Cash security risks"],
+    paymentPoints: ["CBN licensing fee and mandatory caution deposit", "AML compliance systems", "Bullion/cash-in-transit services", "Office and security infrastructure"],
+    specialists: {
+      design: [
+        { role: "Banking Lawyer", category: "Legal", responsibility: "CBN application, corporate governance documents.", whenEngaged: "At formation" },
+      ],
+      implementation: [
+        { role: "Compliance Systems Vendor", category: "Procurement", responsibility: "KYC/transaction monitoring and rate board systems.", whenEngaged: "Before launch" },
+      ],
+      operations: [
+        { role: "Compliance Officer (AML)", category: "Regulatory", responsibility: "KYC, transaction reporting to NFIU, CBN returns.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["CBN BDC licence", "NFIU registration", "Caution deposit confirmation"],
+    importHeavy: false,
+  }),
+  buildTemplate({
+    id: "rice-milling",
+    name: "Rice Milling & Processing",
+    isicCode: "C1061",
+    keywords: ["rice", "rice mill", "paddy", "milling", "rice processing"],
+    summary:
+      "Ecosystem for an integrated rice milling plant in Nigeria: paddy sourcing, milling, branding and distribution.",
+    regulators: [
+      NAFDAC,
+      SON,
+      reg("Federal Ministry of Agriculture and Food Security", "Agro-processing support schemes and paddy aggregation programs.", "Agriculture policy frameworks", "https://fmard.gov.ng"),
+      NESREA,
+    ],
+    risks: ["Paddy supply seasonality and quality", "Smuggled imported rice undercutting prices", "Power costs for milling", "Post-harvest losses"],
+    paymentPoints: ["Paddy aggregators/outgrowers at purchase", "Milling equipment suppliers and installers", "NAFDAC product registration fees", "Distributors' margins on sales"],
+    specialists: {
+      design: [
+        { role: "Agro-Process Engineer", category: "Engineering", responsibility: "Mill capacity design, parboiling and destoning lines.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Milling Equipment Installer", category: "Construction", responsibility: "Installation and commissioning of milling lines.", whenEngaged: "After equipment delivery" },
+      ],
+      operations: [
+        { role: "Outgrower/Aggregation Manager", category: "Operations", responsibility: "Farmer network, paddy quality and supply contracts.", whenEngaged: "From first season" },
+      ],
+    },
+    approvalsDeliverables: ["NAFDAC registration", "SON MANCAP certification", "Environmental permit"],
+  }),
+  buildTemplate({
+    id: "palm-oil-processing",
+    name: "Palm Oil Plantation & Processing",
+    isicCode: "C1040",
+    keywords: ["palm oil", "oil palm", "plantation", "palm kernel", "crude palm oil", "cpo"],
+    summary:
+      "Ecosystem for oil palm plantation development and palm oil milling/refining in Nigeria.",
+    regulators: [
+      NAFDAC,
+      SON,
+      reg("State Ministry of Agriculture / Lands", "Plantation land allocation and agricultural permits.", "Land Use Act 1978", "https://fmard.gov.ng", "State"),
+      NESREA,
+    ],
+    risks: ["Long gestation (3-5 years to first harvest)", "Land/community disputes over plantations", "CPO price swings", "Smallholder supply inconsistency"],
+    paymentPoints: ["Land acquisition and community agreements", "Seedlings and plantation establishment costs", "Mill equipment suppliers", "NAFDAC/SON certification fees"],
+    specialists: {
+      design: [
+        { role: "Agronomist (oil palm)", category: "Advisory", responsibility: "Plantation layout, seedling selection, yield planning.", whenEngaged: "Before planting" },
+      ],
+      implementation: [
+        { role: "Mill Equipment Installer", category: "Construction", responsibility: "Palm oil mill and refinery installation.", whenEngaged: "Mill construction" },
+      ],
+      operations: [
+        { role: "Plantation Manager", category: "Operations", responsibility: "Estate operations, harvesting, smallholder scheme.", whenEngaged: "From establishment" },
+      ],
+    },
+    approvalsDeliverables: ["Land title/C of O", "NAFDAC registration for edible oil", "Environmental permit"],
+  }),
+  buildTemplate({
+    id: "cassava-processing",
+    name: "Cassava Processing Plant",
+    isicCode: "C1062",
+    keywords: ["cassava", "garri", "starch", "ethanol", "high quality cassava flour", "hqcf"],
+    summary:
+      "Ecosystem for industrial cassava processing in Nigeria: garri, high-quality cassava flour, starch or ethanol.",
+    regulators: [NAFDAC, SON, NESREA, FIRS],
+    risks: ["Cassava root supply and pricing", "Rapid post-harvest deterioration of roots", "Power and drying costs", "Competition from imported starch"],
+    paymentPoints: ["Root aggregators/farmers at gate price", "Processing equipment suppliers", "NAFDAC registration fees", "Distribution and offtake logistics"],
+    specialists: {
+      design: [
+        { role: "Food Process Engineer", category: "Engineering", responsibility: "Processing line design, drying and packaging systems.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Equipment Installer", category: "Construction", responsibility: "Line installation and commissioning.", whenEngaged: "After delivery" },
+      ],
+      operations: [
+        { role: "Sourcing/Outgrower Manager", category: "Operations", responsibility: "Farmer clusters and root supply contracts.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["NAFDAC registration", "SON certification", "Environmental permit"],
+  }),
+  buildTemplate({
+    id: "abattoir-meat-processing",
+    name: "Abattoir & Meat Processing",
+    isicCode: "C1010",
+    keywords: ["abattoir", "meat", "slaughterhouse", "beef", "sausage", "meat processing", "butchery"],
+    summary:
+      "Ecosystem for a modern abattoir and meat processing/packaging facility in Nigeria.",
+    regulators: [
+      NAFDAC,
+      reg("State Ministry of Agriculture (Veterinary Services)", "Abattoir licensing and ante/post-mortem inspection.", "Meat Edict/State laws", "https://fmard.gov.ng", "State"),
+      NESREA,
+      SON,
+    ],
+    risks: ["Animal supply price volatility", "Cold chain failures", "Sanitary compliance shutdowns", "Community objections to siting"],
+    paymentPoints: ["Livestock purchases at market", "Veterinary inspection fees", "Cold room and processing equipment", "Distribution fleet costs"],
+    specialists: {
+      design: [
+        { role: "Food Safety Consultant (HACCP)", category: "Advisory", responsibility: "HACCP design, sanitary layout, NAFDAC compliance.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Cold Chain Contractor", category: "Construction", responsibility: "Cold rooms, blast freezers, chill chain installation.", whenEngaged: "Construction" },
+      ],
+      operations: [
+        { role: "Resident Veterinary Officer", category: "Operations", responsibility: "Ante/post-mortem inspection and animal welfare.", whenEngaged: "From operations" },
+      ],
+    },
+    approvalsDeliverables: ["State abattoir licence", "NAFDAC registration for processed meat", "Environmental permit"],
+  }),
+  buildTemplate({
+    id: "fertilizer-agro-inputs",
+    name: "Fertilizer Blending & Agro-Inputs",
+    isicCode: "C2012",
+    keywords: ["fertilizer", "npk", "urea", "agro input", "agrochemical", "blending plant", "seeds"],
+    summary:
+      "Ecosystem for a fertilizer blending plant or agro-inputs distribution business in Nigeria.",
+    regulators: [
+      reg("Federal Ministry of Agriculture (FISS)", "Fertilizer quality control and blender registration.", "National Fertilizer Quality Control Act 2019", "https://fmard.gov.ng"),
+      NAFDAC,
+      SON,
+      NESREA,
+    ],
+    risks: ["Raw material (DAP/MOP/urea) import dependence", "Seasonal demand concentration", "Government subsidy program changes", "Adulteration damaging brand"],
+    paymentPoints: ["Raw material imports (LC/Form M)", "Blending plant equipment", "Blender registration fees", "Agro-dealer network commissions"],
+    specialists: {
+      design: [
+        { role: "Chemical Process Engineer", category: "Engineering", responsibility: "Blending plant design, formulation systems.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Plant Installation Contractor", category: "Construction", responsibility: "Blending line and bagging installation.", whenEngaged: "Construction" },
+      ],
+      operations: [
+        { role: "Agro-dealer Network Manager", category: "Operations", responsibility: "Distribution network, demand planning by season.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["Fertilizer blender registration", "SON certification", "Environmental permit"],
+  }),
+  buildTemplate({
+    id: "bakery-confectionery",
+    name: "Bakery & Confectionery",
+    isicCode: "C1071",
+    keywords: ["bakery", "bread", "confectionery", "pastries", "cake", "biscuit"],
+    summary:
+      "Ecosystem for an industrial bakery or confectionery brand in Nigeria, from NAFDAC registration to distribution.",
+    regulators: [
+      NAFDAC,
+      SON,
+      reg("State Environmental/Health Authority", "Premises hygiene permits and food handler certification.", "State public health laws", "https://lasepa.gov.ng", "State"),
+      FIRS,
+    ],
+    risks: ["Flour/sugar price volatility (FX-linked)", "Energy (diesel/gas) costs for ovens", "Short shelf life and returns", "Intense price competition"],
+    paymentPoints: ["Bakery equipment suppliers", "NAFDAC registration fees", "Flour/ingredient suppliers on credit cycles", "Distributor/van sales commissions"],
+    specialists: {
+      design: [
+        { role: "Food Technologist", category: "Advisory", responsibility: "Recipes, shelf-life testing, NAFDAC dossiers.", whenEngaged: "Product development" },
+      ],
+      implementation: [
+        { role: "Bakery Equipment Installer", category: "Construction", responsibility: "Oven, mixer and proofing line installation.", whenEngaged: "Fit-out" },
+      ],
+      operations: [
+        { role: "Production/QA Manager", category: "Operations", responsibility: "Daily production, hygiene and quality control.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["NAFDAC product registration", "Premises hygiene permit", "Food handlers' certificates"],
+    importHeavy: false,
+  }),
+  buildTemplate({
+    id: "restaurant-qsr",
+    name: "Restaurant / QSR Chain",
+    isicCode: "I5610",
+    keywords: ["restaurant", "qsr", "fast food", "eatery", "food chain", "franchise food", "cafe"],
+    summary:
+      "Ecosystem for launching a restaurant or quick-service restaurant chain in Nigeria, including franchising.",
+    regulators: [
+      NAFDAC,
+      reg("State Environmental/Health Authority", "Food premises licensing and health inspections.", "State public health laws", "https://lasepa.gov.ng", "State"),
+      FIRS,
+      CAC,
+    ],
+    risks: ["Location selection and rent escalations", "Food cost inflation", "Staff turnover and pilferage", "Brand/food-safety incidents"],
+    paymentPoints: ["Landlords (rent/premium) per outlet", "Kitchen equipment suppliers", "Franchise fees (if franchising)", "Food suppliers on weekly cycles"],
+    specialists: {
+      design: [
+        { role: "F&B Consultant", category: "Advisory", responsibility: "Menu engineering, kitchen workflow, unit economics.", whenEngaged: "Concept stage" },
+        { role: "Interior/Kitchen Designer", category: "Engineering", responsibility: "Outlet layout and commercial kitchen design.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Fit-out Contractor", category: "Construction", responsibility: "Outlet construction and kitchen installation.", whenEngaged: "Per outlet" },
+      ],
+      operations: [
+        { role: "Operations/Area Manager", category: "Operations", responsibility: "Multi-outlet standards, inventory and staffing.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["Food premises licence per outlet", "NAFDAC compliance (packaged items)", "Fire safety certificate"],
+    importHeavy: false,
+  }),
+  buildTemplate({
+    id: "travel-tourism",
+    name: "Travel Agency & Tour Operations",
+    isicCode: "N7911",
+    keywords: ["travel agency", "tour operator", "tourism", "iata", "ticketing", "visa services", "tours"],
+    summary:
+      "Ecosystem for a licensed travel agency, tour operator or destination management company in Nigeria.",
+    regulators: [
+      reg("Nigerian Tourism Development Authority (NTDA)", "Registration of travel/tourism enterprises.", "NTDA Act 2022", "https://ntda.gov.ng"),
+      reg("IATA (accreditation)", "BSP ticketing accreditation for airlines.", "IATA accreditation rules", "https://www.iata.org"),
+      CAC,
+      FIRS,
+    ],
+    risks: ["Airline default/refund exposure", "FX for international bookings", "Seasonal demand swings", "Online OTA competition"],
+    paymentPoints: ["IATA accreditation and bank guarantee", "GDS system subscriptions", "NTDA registration fees", "Marketing and OTA commissions"],
+    specialists: {
+      design: [
+        { role: "Travel Technology Vendor", category: "Procurement", responsibility: "GDS setup, booking engine, payment integration.", whenEngaged: "Before launch" },
+      ],
+      implementation: [
+        { role: "IATA Accreditation Consultant", category: "Advisory", responsibility: "BSP application, financial criteria compliance.", whenEngaged: "Accreditation process" },
+      ],
+      operations: [
+        { role: "Ticketing/Tours Team", category: "Operations", responsibility: "Reservations, itineraries, supplier management.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["NTDA registration", "IATA accreditation (if ticketing)", "Bank guarantee"],
+    importHeavy: false,
+  }),
+  buildTemplate({
+    id: "printing-packaging",
+    name: "Printing, Publishing & Packaging",
+    isicCode: "C1811",
+    keywords: ["printing", "publishing", "packaging", "labels", "cartons", "flexographic", "press"],
+    summary:
+      "Ecosystem for a commercial printing press or packaging manufacturing plant in Nigeria.",
+    regulators: [SON, NESREA, CAC, FIRS],
+    risks: ["Paper/board import costs (FX)", "Digital substitution of print", "Client concentration risk", "Machine downtime and spares"],
+    paymentPoints: ["Printing press equipment imports", "Paper/board and ink suppliers", "SON certification for packaging", "Maintenance contracts"],
+    specialists: {
+      design: [
+        { role: "Print Production Engineer", category: "Engineering", responsibility: "Press selection, prepress workflow, finishing lines.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Press Installation Technician", category: "Construction", responsibility: "Press installation, calibration and training.", whenEngaged: "After delivery" },
+      ],
+      operations: [
+        { role: "Production Manager", category: "Operations", responsibility: "Scheduling, quality control, waste reduction.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["SON certification (food-contact packaging)", "Environmental permit", "Factory registration"],
+  }),
+  buildTemplate({
+    id: "paint-chemicals",
+    name: "Paint & Chemicals Plant",
+    isicCode: "C2022",
+    keywords: ["paint", "coatings", "chemicals", "adhesives", "emulsion", "solvent"],
+    summary:
+      "Ecosystem for a paint, coatings or industrial chemicals manufacturing plant in Nigeria.",
+    regulators: [
+      SON,
+      NESREA,
+      NAFDAC,
+      reg("Federal Ministry of Environment", "Chemical management and hazardous substances control.", "Chemicals management frameworks", "https://environment.gov.ng"),
+    ],
+    risks: ["Imported raw material (resins, pigments) FX exposure", "Flammable materials safety incidents", "Adulterated competition", "Environmental discharge compliance"],
+    paymentPoints: ["Raw material imports", "Mixing/filling equipment", "SON MANCAP certification", "Distributor network margins"],
+    specialists: {
+      design: [
+        { role: "Chemical Engineer", category: "Engineering", responsibility: "Formulations, plant layout, safety systems.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Plant Installation Contractor", category: "Construction", responsibility: "Mixers, filling lines and safety installations.", whenEngaged: "Construction" },
+      ],
+      operations: [
+        { role: "QC/Lab Chemist", category: "Operations", responsibility: "Batch quality control and standards compliance.", whenEngaged: "From production" },
+      ],
+    },
+    approvalsDeliverables: ["SON MANCAP certificate", "Environmental permit", "Fire safety certificate"],
+  }),
+  buildTemplate({
+    id: "plastics-manufacturing",
+    name: "Plastics & Packaging Manufacturing",
+    isicCode: "C2220",
+    keywords: ["plastics", "injection molding", "pet bottles", "nylon", "polythene", "preforms", "extrusion"],
+    summary:
+      "Ecosystem for a plastics manufacturing plant in Nigeria: injection molding, PET preforms/bottles, films or crates.",
+    regulators: [SON, NESREA, FIRS, CAC],
+    risks: ["Polymer resin import costs (FX)", "Single-use plastics regulation tightening", "Power intensity of production", "Price competition from imports"],
+    paymentPoints: ["Resin imports (LC/Form M)", "Molding/extrusion machines", "Molds and tooling", "SON certification fees"],
+    specialists: {
+      design: [
+        { role: "Polymer/Production Engineer", category: "Engineering", responsibility: "Machine selection, mold design, cycle optimization.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Machine Installation Technician", category: "Construction", responsibility: "Installation, commissioning and operator training.", whenEngaged: "After delivery" },
+      ],
+      operations: [
+        { role: "Production/Maintenance Manager", category: "Operations", responsibility: "Uptime, tooling maintenance, scrap recycling.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["SON certification", "Environmental permit", "Factory registration"],
+  }),
+  buildTemplate({
+    id: "steel-fabrication",
+    name: "Steel & Metal Fabrication",
+    isicCode: "C2511",
+    keywords: ["steel", "metal fabrication", "welding", "structural steel", "aluminium", "roofing profiles", "rebar"],
+    summary:
+      "Ecosystem for a steel rolling, structural fabrication or aluminium profiles plant in Nigeria.",
+    regulators: [SON, NESREA, CAC, FIRS],
+    risks: ["Billet/coil import dependence", "Power costs for rolling/furnaces", "Construction demand cyclicality", "Substandard imports undercutting"],
+    paymentPoints: ["Raw steel imports or local scrap purchases", "Rolling/fabrication machinery", "SON MANCAP certification", "Haulage of heavy products"],
+    specialists: {
+      design: [
+        { role: "Metallurgical/Structural Engineer", category: "Engineering", responsibility: "Product specs, plant layout, quality standards.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Heavy Equipment Installer", category: "Construction", responsibility: "Rolling mill/fabrication line installation.", whenEngaged: "Construction" },
+      ],
+      operations: [
+        { role: "Certified Welders/QA Inspectors", category: "Operations", responsibility: "Fabrication quality and standards compliance.", whenEngaged: "From production" },
+      ],
+    },
+    approvalsDeliverables: ["SON MANCAP certificate", "Environmental permit", "Factory registration"],
+  }),
+  buildTemplate({
+    id: "automotive-assembly",
+    name: "Automotive Assembly Plant",
+    isicCode: "C2910",
+    keywords: ["automotive", "vehicle assembly", "car plant", "skd", "ckd", "trucks", "buses"],
+    summary:
+      "Ecosystem for an SKD/CKD vehicle assembly plant in Nigeria under the national automotive industry development plan.",
+    regulators: [
+      reg("National Automotive Design and Development Council (NADDC)", "Assembly plant licensing and auto policy incentives.", "NADDC Act", "https://naddc.gov.ng"),
+      SON,
+      reg("Nigeria Customs Service", "Concessionary duty on CKD/SKD kits.", "Fiscal policy/auto tariffs", "https://customs.gov.ng"),
+      NESREA,
+    ],
+    risks: ["Kit import FX exposure", "Low volumes vs installed capacity", "Policy/tariff instability", "Financing cost of inventory"],
+    paymentPoints: ["CKD/SKD kit imports", "Assembly line equipment", "NADDC licensing", "Dealer network incentives"],
+    specialists: {
+      design: [
+        { role: "Automotive Manufacturing Engineer", category: "Engineering", responsibility: "Assembly line design, quality gates, homologation.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Line Installation Contractor", category: "Construction", responsibility: "Conveyor, paint and test line installation.", whenEngaged: "Construction" },
+      ],
+      operations: [
+        { role: "Plant/Quality Manager", category: "Operations", responsibility: "Production ramp, SON conformity, warranty management.", whenEngaged: "From SOP" },
+      ],
+    },
+    approvalsDeliverables: ["NADDC assembly licence", "SON conformity certification", "Environmental permit"],
+  }),
+  buildTemplate({
+    id: "furniture-manufacturing",
+    name: "Furniture & Woodwork Manufacturing",
+    isicCode: "C3100",
+    keywords: ["furniture", "woodwork", "joinery", "cabinets", "upholstery", "office furniture"],
+    summary:
+      "Ecosystem for an industrial furniture manufacturing and fit-out business in Nigeria.",
+    regulators: [SON, NESREA, CAC, FIRS],
+    risks: ["Imported board/hardware costs", "Skilled joiner scarcity", "Project payment delays from developers", "Cheap import competition"],
+    paymentPoints: ["Wood/board and hardware suppliers", "CNC and woodworking machines", "Showroom rent", "Project-based invoicing to developers"],
+    specialists: {
+      design: [
+        { role: "Furniture/Industrial Designer", category: "Advisory", responsibility: "Product lines, prototypes, project specifications.", whenEngaged: "Product development" },
+      ],
+      implementation: [
+        { role: "CNC Machine Installer", category: "Construction", responsibility: "CNC routers, edge banders, finishing booth setup.", whenEngaged: "Factory fit-out" },
+      ],
+      operations: [
+        { role: "Production/Projects Manager", category: "Operations", responsibility: "Factory output and site installation crews.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["Factory registration", "Environmental permit", "Fire safety certificate"],
+  }),
+  buildTemplate({
+    id: "leather-footwear",
+    name: "Leather & Footwear Production",
+    isicCode: "C1520",
+    keywords: ["leather", "footwear", "shoes", "tannery", "bags", "aba shoes"],
+    summary:
+      "Ecosystem for leather processing (tannery) or footwear/leather-goods manufacturing in Nigeria.",
+    regulators: [SON, NESREA, CAC, FIRS],
+    risks: ["Tannery effluent compliance costs", "Hide/skin quality and supply", "Second-hand import competition", "Export standards for leather"],
+    paymentPoints: ["Hides/skins purchases", "Tanning/stitching equipment", "Effluent treatment plant", "Export logistics and certifications"],
+    specialists: {
+      design: [
+        { role: "Leather Technologist", category: "Advisory", responsibility: "Tanning processes, quality grading, product development.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Effluent Treatment Contractor", category: "Construction", responsibility: "ETP installation for tannery compliance.", whenEngaged: "Construction" },
+      ],
+      operations: [
+        { role: "Production Supervisor", category: "Operations", responsibility: "Lines, quality control and artisan management.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["Environmental permit (effluent)", "SON certification", "Export registration (NEPC) if exporting"],
+  }),
+  buildTemplate({
+    id: "diagnostics-laboratory",
+    name: "Medical Diagnostics Laboratory",
+    isicCode: "Q8690",
+    keywords: ["diagnostics", "laboratory", "medical lab", "pathology", "imaging", "radiology", "scan center"],
+    summary:
+      "Ecosystem for a licensed medical diagnostics laboratory or imaging center in Nigeria.",
+    regulators: [
+      reg("Medical Laboratory Science Council of Nigeria (MLSCN)", "Laboratory licensing and inspection.", "MLSCN Act 2003", "https://mlscn.gov.ng"),
+      reg("Nigerian Nuclear Regulatory Authority (NNRA)", "Licensing of radiation-emitting equipment (X-ray, CT).", "NSRP Act 1995", "https://nnra.gov.ng"),
+      reg("State Ministry of Health / HEFAMAA", "Health facility registration.", "State health facility laws", "https://hefamaa.lagosstate.gov.ng", "State"),
+      CAC,
+    ],
+    risks: ["Equipment import and maintenance costs", "Reagent supply chain and cold storage", "Qualified scientist retention", "Quality accreditation lapses"],
+    paymentPoints: ["MLSCN and facility registration fees", "Analyzer/imaging equipment (often leased)", "Reagent supply contracts", "NNRA licensing for radiology"],
+    specialists: {
+      design: [
+        { role: "Laboratory Consultant (ISO 15189)", category: "Advisory", responsibility: "Lab design, quality management system, accreditation path.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Medical Equipment Vendor/Installer", category: "Procurement", responsibility: "Analyzers/imaging installation, calibration, training.", whenEngaged: "Fit-out" },
+      ],
+      operations: [
+        { role: "Chief Medical Laboratory Scientist", category: "Operations", responsibility: "Testing operations, QC and MLSCN compliance.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["MLSCN laboratory licence", "State facility registration", "NNRA licence (imaging)"],
+  }),
+  buildTemplate({
+    id: "event-center-hospitality",
+    name: "Event Center & Hospitality Venue",
+    isicCode: "N8230",
+    keywords: ["event center", "event hall", "wedding venue", "conference center", "banquet"],
+    summary:
+      "Ecosystem for building and operating an event center, conference or banquet venue in Nigeria.",
+    regulators: [
+      reg("State Physical Planning Authority", "Building plan approval for assembly buildings.", "State planning laws", "https://lasppa.lagosstate.gov.ng", "State"),
+      reg("State Fire Service", "Fire safety certification for public assembly.", "Fire service laws", "https://lagosfireservice.gov.ng", "State"),
+      reg("State Signage/Entertainment Authority", "Venue and event permits.", "State levies laws", "https://lasaa.com", "State"),
+      FIRS,
+    ],
+    risks: ["High parking/traffic compliance requirements", "Noise complaints and community relations", "Seasonal booking concentration", "Generator/power costs"],
+    paymentPoints: ["Land and construction contractors", "Fire safety systems installers", "Sound/AV equipment vendors", "Event staff per function"],
+    specialists: {
+      design: [
+        { role: "Architect (assembly buildings)", category: "Engineering", responsibility: "Venue design, acoustics, egress compliance.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "AV/Acoustics Contractor", category: "Construction", responsibility: "Sound, lighting and staging installations.", whenEngaged: "Fit-out" },
+      ],
+      operations: [
+        { role: "Venue/Bookings Manager", category: "Operations", responsibility: "Bookings, vendors, event-day operations.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["Building plan approval", "Fire safety certificate", "Venue operating permits"],
+    importHeavy: false,
+  }),
+  buildTemplate({
+    id: "gold-refining-jewelry",
+    name: "Gold Refining & Jewelry",
+    isicCode: "C2411",
+    keywords: ["gold", "refining", "jewelry", "precious metals", "bullion", "goldsmith"],
+    summary:
+      "Ecosystem for licensed gold aggregation, refining or jewelry manufacturing in Nigeria under the PAGMI framework.",
+    regulators: [
+      reg("Ministry of Solid Minerals Development / Mining Cadastre Office", "Buying centre and processing licences.", "Minerals and Mining Act 2007", "https://miningcadastre.gov.ng"),
+      reg("Central Bank of Nigeria (CBN)", "Gold purchase program and bullion standards (PAGMI).", "PAGMI framework", "https://www.cbn.gov.ng"),
+      NESREA,
+      CAC,
+    ],
+    risks: ["Artisanal supply chain formalization", "Gold price volatility", "Security of high-value inventory", "Smuggling competition"],
+    paymentPoints: ["Licence fees to Mining Cadastre", "Aggregation payments to miners", "Refinery equipment and assay lab", "Security and vaulting services"],
+    specialists: {
+      design: [
+        { role: "Metallurgist/Assayer", category: "Engineering", responsibility: "Refining process design, assay laboratory setup.", whenEngaged: "Design stage" },
+      ],
+      implementation: [
+        { role: "Refinery Equipment Installer", category: "Construction", responsibility: "Furnaces, electrolysis and assay equipment.", whenEngaged: "Construction" },
+      ],
+      operations: [
+        { role: "Sourcing/Compliance Manager", category: "Operations", responsibility: "Responsible sourcing, records for LBMA-style compliance.", whenEngaged: "From launch" },
+      ],
+    },
+    approvalsDeliverables: ["Buying centre/processing licence", "Environmental permit", "CBN program registration (if selling to CBN)"],
+  }),
 ];
