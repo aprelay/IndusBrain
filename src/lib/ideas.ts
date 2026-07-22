@@ -217,6 +217,7 @@ export interface IdeaDeepDive {
   capitalPlan: string;
   timeline: string;
   successMetrics: string[];
+  surroundingOpportunities: SurroundingOpportunity[];
   generatedAt: string;
 }
 
@@ -261,28 +262,57 @@ export async function generateIdeaDeepDive(
       : `Target jurisdiction: Nigeria. Use Nigeria's actual regulators, permits, and market costs.`
   );
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-        messages: [
-          { role: "system", content: DEEP_DIVE_SYSTEM_PROMPT },
-          { role: "user", content: parts.join("\n") },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.5,
-        max_tokens: 4000,
-      }),
-    });
+    const call = (system: string, user: string, temperature: number) =>
+      fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+          response_format: { type: "json_object" },
+          temperature,
+          max_tokens: 4000,
+        }),
+      });
+    const surroundingUser = `${ideaName}: ${concept}\n\nTarget jurisdiction: ${country || "Nigeria"}. Ground costs and gaps in ${country || "Nigeria"}.`;
+    const [res, surRes] = await Promise.all([
+      call(DEEP_DIVE_SYSTEM_PROMPT, parts.join("\n"), 0.5),
+      call(SURROUNDING_SYSTEM_PROMPT, surroundingUser, 0.7).catch(() => null),
+    ]);
     if (!res.ok) return null;
     const data = await res.json();
     const content = data.choices?.[0]?.message?.content;
     if (!content) return null;
     const parsed = JSON.parse(content);
+    let surroundingOpportunities: SurroundingOpportunity[] = [];
+    if (surRes && surRes.ok) {
+      try {
+        const surData = await surRes.json();
+        const surContent = surData.choices?.[0]?.message?.content;
+        const surParsed = surContent ? JSON.parse(surContent) : null;
+        if (Array.isArray(surParsed?.opportunities)) {
+          surroundingOpportunities = surParsed.opportunities
+            .filter((o: Partial<SurroundingOpportunity>) => typeof o?.name === "string")
+            .map((o: Partial<SurroundingOpportunity>) => ({
+              name: o.name as string,
+              type: asString(o.type),
+              description: asString(o.description),
+              whoBuys: asString(o.whoBuys),
+              startupCost: asString(o.startupCost),
+              marketGap: asString(o.marketGap),
+              outreachIndustry: asString(o.outreachIndustry),
+            }));
+        }
+      } catch {
+        surroundingOpportunities = [];
+      }
+    }
     if (!Array.isArray(parsed?.phases) || parsed.phases.length === 0) return null;
     const phases: DeepDivePhase[] = parsed.phases
       .filter((p: Partial<DeepDivePhase>) => typeof p?.name === "string")
@@ -311,6 +341,7 @@ export async function generateIdeaDeepDive(
       capitalPlan: asString(parsed.capitalPlan),
       timeline: asString(parsed.timeline),
       successMetrics: asStringArray(parsed.successMetrics),
+      surroundingOpportunities,
       generatedAt: new Date().toISOString(),
     };
   } catch {
@@ -351,6 +382,26 @@ export function deepDiveToMarkdown(d: IdeaDeepDive): string {
     lines.push(`## Success metrics`);
     d.successMetrics.forEach((e) => lines.push(`- ${e}`));
     lines.push("");
+  }
+  if (d.surroundingOpportunities?.length) {
+    lines.push(
+      "---",
+      "",
+      `## Surrounding opportunity ecosystem`,
+      "",
+      `Businesses this venture creates demand for — each one an opportunity of its own:`,
+      ""
+    );
+    d.surroundingOpportunities.forEach((o, k) => {
+      if (k > 0 && k % 3 === 0) lines.push("---", "");
+      lines.push(`### ${k + 1}. ${o.name}${o.type ? ` (${o.type})` : ""}`);
+      if (o.description) lines.push(o.description);
+      if (o.whoBuys) lines.push(`- **Who pays you:** ${o.whoBuys}`);
+      if (o.startupCost) lines.push(`- **Startup cost:** ${o.startupCost}`);
+      if (o.marketGap) lines.push(`- **Market gap:** ${o.marketGap}`);
+      if (o.outreachIndustry) lines.push(`- **Outreach category:** ${o.outreachIndustry}`);
+      lines.push("");
+    });
   }
   return lines.join("\n");
 }

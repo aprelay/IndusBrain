@@ -575,6 +575,65 @@ export default function IdeasPage() {
                   </div>
                 </div>
               )}
+              {(deepDive.surroundingOpportunities?.length ?? 0) > 0 && (
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold">Surrounding opportunity ecosystem</h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Businesses this venture creates demand for — each one an opportunity of its
+                    own.
+                  </p>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    {deepDive.surroundingOpportunities.map((o, k) => (
+                      <div
+                        key={o.name}
+                        className="rounded-xl border border-slate-200 bg-slate-50 p-5"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="font-bold">
+                            {k + 1}. {o.name}
+                          </h4>
+                          {o.type && (
+                            <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                              {o.type}
+                            </span>
+                          )}
+                        </div>
+                        {o.description && (
+                          <p className="mt-2 text-sm text-slate-700">{o.description}</p>
+                        )}
+                        <div className="mt-3 space-y-1 text-sm">
+                          {o.whoBuys && (
+                            <p>
+                              <span className="font-semibold">Who pays you:</span>{" "}
+                              <span className="text-slate-600">{o.whoBuys}</span>
+                            </p>
+                          )}
+                          {o.startupCost && (
+                            <p>
+                              <span className="font-semibold">Startup cost:</span>{" "}
+                              <span className="text-slate-600">{o.startupCost}</span>
+                            </p>
+                          )}
+                          {o.marketGap && (
+                            <p>
+                              <span className="font-semibold">Market gap:</span>{" "}
+                              <span className="text-slate-600">{o.marketGap}</span>
+                            </p>
+                          )}
+                          {o.outreachIndustry && (
+                            <a
+                              href={`/outreach?industry=${encodeURIComponent(o.outreachIndustry)}`}
+                              className="inline-block rounded-full bg-white px-3 py-1 text-xs font-medium text-blue-600 hover:bg-slate-100"
+                            >
+                              📡 Find {o.outreachIndustry} companies
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <p className="mt-4 text-xs text-slate-500">
                 AI-generated execution playbook — verify costs, permits and regulators locally
                 before committing capital.
