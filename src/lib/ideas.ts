@@ -366,7 +366,7 @@ export function ideaReportToMarkdown(r: IdeaReport): string {
     ""
   );
   r.ideas.forEach((i, n) => {
-    lines.push(`## ${n + 1}. ${i.name}`, "", i.concept, "");
+    lines.push("---", "", `## ${n + 1}. ${i.name}`, "", i.concept, "");
     lines.push(`**Target market:** ${i.targetMarket}`);
     lines.push(`**Revenue model:** ${i.revenueModel}`);
     lines.push(`**Why now:** ${i.whyNow}`);
@@ -401,12 +401,15 @@ export function ideaReportToMarkdown(r: IdeaReport): string {
   });
   if (r.surroundingOpportunities?.length) {
     lines.push(
+      "---",
+      "",
       `## Surrounding opportunity ecosystem`,
       "",
       `Every project creates demand for dozens of other businesses. These are the opportunities surrounding "${r.brief}":`,
       ""
     );
     r.surroundingOpportunities.forEach((o, k) => {
+      if (k > 0 && k % 3 === 0) lines.push("---", "");
       lines.push(`### ${k + 1}. ${o.name}${o.type ? ` (${o.type})` : ""}`);
       if (o.description) lines.push(o.description);
       if (o.whoBuys) lines.push(`- **Who pays you:** ${o.whoBuys}`);

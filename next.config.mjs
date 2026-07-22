@@ -8,6 +8,9 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  experimental: {
+    serverComponentsExternalPackages: ["pdfkit"],
+  },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
