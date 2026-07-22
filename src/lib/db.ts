@@ -254,6 +254,17 @@ export function addUserCredits(email: string, credits: number): boolean {
   );
 }
 
+export function deleteUser(id: number): boolean {
+  const db = getDb();
+  const run = db.transaction((userId: number) => {
+    db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM saved_blueprints WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM saved_ideas WHERE user_id = ?").run(userId);
+    return db.prepare("DELETE FROM users WHERE id = ? AND role != 'admin'").run(userId).changes > 0;
+  });
+  return run(id);
+}
+
 export function listUsers(): User[] {
   return getDb()
     .prepare("SELECT id, email, role, credits FROM users ORDER BY id DESC")

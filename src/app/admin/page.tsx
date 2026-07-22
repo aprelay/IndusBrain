@@ -172,6 +172,23 @@ export default function AdminPage() {
     loadAll();
   }
 
+  async function removeUser(id: number, email: string) {
+    if (!window.confirm(`Delete account ${email}? This removes their saved reports too.`)) return;
+    setStatus(null);
+    const res = await fetch("/api/admin/users", {
+      method: "DELETE",
+      headers,
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setStatus(data.error || "Failed to delete user");
+      return;
+    }
+    setStatus(`Deleted ${email}`);
+    loadAll();
+  }
+
   async function addUserCredits() {
     setStatus(null);
     const res = await fetch("/api/admin/users", {
@@ -604,7 +621,17 @@ export default function AdminPage() {
                       {u.email}{" "}
                       <span className="text-xs text-slate-500">({u.role})</span>
                     </span>
-                    <span className="text-sm text-slate-600">{u.credits} credits</span>
+                    <span className="flex items-center gap-3 text-sm text-slate-600">
+                      {u.credits} credits
+                      {u.role !== "admin" && (
+                        <button
+                          onClick={() => removeUser(u.id, u.email)}
+                          className="text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </span>
                   </li>
                 ))}
                 {users.length === 0 && (
