@@ -48,6 +48,17 @@ async function aiCall(
   }
 }
 
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+}
+
 function buildPriceContext(country?: string): string {
   const prices = listPrices(country || undefined).slice(0, 30);
   if (prices.length === 0) return "";
@@ -309,11 +320,14 @@ export async function fetchDomainEnrichment(domain: string): Promise<DomainEnric
       clearTimeout(timer);
       if (!res.ok) continue;
       const html = (await res.text()).slice(0, 300000);
-      const title = /<title[^>]*>([^<]*)<\/title>/i.exec(html)?.[1]?.trim().slice(0, 200) || "";
-      const desc =
+      const title = decodeEntities(
+        /<title[^>]*>([^<]*)<\/title>/i.exec(html)?.[1]?.trim().slice(0, 200) || ""
+      );
+      const desc = decodeEntities(
         /<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i.exec(html)?.[1]?.trim().slice(0, 400) ||
-        /<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["']/i.exec(html)?.[1]?.trim().slice(0, 400) ||
-        "";
+          /<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["']/i.exec(html)?.[1]?.trim().slice(0, 400) ||
+          ""
+      );
       const emails = Array.from(
         new Set(
           (html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []).filter(
