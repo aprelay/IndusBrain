@@ -33,6 +33,8 @@ export interface IdeaReport {
   country?: string;
   ideas: IdeaConcept[];
   surroundingOpportunities: SurroundingOpportunity[];
+  groundedIn?: string[];
+  refined?: boolean;
   generatedAt: string;
 }
 
@@ -77,6 +79,10 @@ Respond ONLY with JSON matching this TypeScript type (no markdown fences):
   }]
 }
 Return 12-18 opportunities covering the full value chain: inputs/suppliers, trades, services, downstream and support businesses.`;
+
+const CRITIC_SYSTEM_PROMPT = `You are the ruthless investment-committee critic of an industry-ecosystem intelligence platform. You receive a brief and a set of AI-generated venture ideas. Your job: find what is weak, generic, unrealistic or missing in each idea, then return an IMPROVED version of the same set — sharper numbers, more specific market signals, realistic capital bands, correct regulators for the jurisdiction, and honest assumptions. Replace any idea that would not survive investor scrutiny with a stronger one for the same brief. Keep exactly the same number of ideas and the exact same JSON schema you received.
+
+Respond ONLY with JSON: { "ideas": [ ...same schema as input... ] }`;
 
 function asStringArray(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
@@ -127,7 +133,25 @@ export async function generateIdeas(
     const data = await res.json();
     const content = data.choices?.[0]?.message?.content;
     if (!content) return null;
-    const parsed = JSON.parse(content);
+    let parsed = JSON.parse(content);
+    let refined = false;
+    if (Array.isArray(parsed?.ideas) && parsed.ideas.length > 0) {
+      try {
+        const criticUser = `Brief: ${brief}${country ? `\nTarget jurisdiction: ${country}` : ""}\n\nIdeas to critique and improve:\n${JSON.stringify({ ideas: parsed.ideas })}`;
+        const critRes = await call(CRITIC_SYSTEM_PROMPT, criticUser, 0.4);
+        if (critRes.ok) {
+          const critData = await critRes.json();
+          const critContent = critData.choices?.[0]?.message?.content;
+          const critParsed = critContent ? JSON.parse(critContent) : null;
+          if (Array.isArray(critParsed?.ideas) && critParsed.ideas.length === parsed.ideas.length) {
+            parsed = critParsed;
+            refined = true;
+          }
+        }
+      } catch {
+        refined = false;
+      }
+    }
     let surroundingOpportunities: SurroundingOpportunity[] = [];
     if (surRes && surRes.ok) {
       try {
@@ -185,6 +209,7 @@ export async function generateIdeas(
       country,
       ideas,
       surroundingOpportunities,
+      refined,
       generatedAt: new Date().toISOString(),
     };
   } catch {
@@ -406,6 +431,15 @@ export function deepDiveToMarkdown(d: IdeaDeepDive): string {
   return lines.join("\n");
 }
 
+function appendGrounding(lines: string[], r: IdeaReport): void {
+  if (!r.groundedIn?.length && !r.refined) return;
+  lines.push("---", "", `## Intelligence sources`, "");
+  if (r.refined)
+    lines.push(`- Multi-pass reasoning: ideas were generated, critiqued by an investment-committee pass, and refined before delivery`);
+  (r.groundedIn || []).forEach((c) => lines.push(`- ${c}`));
+  lines.push("");
+}
+
 export function ideaReportToMarkdown(r: IdeaReport): string {
   const lines: string[] = [`# Idea Engine Report`, ""];
   lines.push(`**Brief:** ${r.brief}`);
@@ -470,5 +504,6 @@ export function ideaReportToMarkdown(r: IdeaReport): string {
       lines.push("");
     });
   }
+  appendGrounding(lines, r);
   return lines.join("\n");
 }

@@ -104,7 +104,86 @@ function getDb(): Database.Database {
       ip TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS price_index (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      item TEXT NOT NULL,
+      unit TEXT NOT NULL DEFAULT '',
+      price TEXT NOT NULL,
+      country TEXT NOT NULL DEFAULT 'Nigeria',
+      source TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(item, country)
+    );
+    CREATE TABLE IF NOT EXISTS reg_watch (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      regulator TEXT NOT NULL,
+      url TEXT NOT NULL UNIQUE,
+      content_hash TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'unchecked',
+      last_checked TEXT NOT NULL DEFAULT '',
+      changed_at TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      topic TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(user_id, topic)
+    );
+    CREATE TABLE IF NOT EXISTS digests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      topic TEXT NOT NULL,
+      week TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(topic, week)
+    );
+    CREATE TABLE IF NOT EXISTS idea_feedback (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      idea_name TEXT NOT NULL,
+      outcome TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
+  for (const col of [
+    "site_title TEXT NOT NULL DEFAULT ''",
+    "site_description TEXT NOT NULL DEFAULT ''",
+    "contact_emails TEXT NOT NULL DEFAULT ''",
+    "contact_phones TEXT NOT NULL DEFAULT ''",
+    "enriched_at TEXT NOT NULL DEFAULT ''",
+  ]) {
+    try {
+      db.exec(`ALTER TABLE outreach_domains ADD COLUMN ${col}`);
+    } catch {
+      // column already exists
+    }
+  }
+  const seedPrices: [string, string, string, string][] = [
+    ["Cement (50kg bag)", "bag", "NGN 9,500 - 11,000", "market survey 2026"],
+    ["Diesel (AGO)", "litre", "NGN 1,100 - 1,300", "market survey 2026"],
+    ["Petrol (PMS)", "litre", "NGN 900 - 1,050", "market survey 2026"],
+    ["USD/NGN exchange rate", "USD", "NGN 1,500 - 1,600", "official/parallel band 2026"],
+    ["Commercial land, Lagos mainland", "plot (600sqm)", "NGN 40M - 150M", "market survey 2026"],
+    ["Warehouse rent, Lagos", "sqm/year", "NGN 15,000 - 35,000", "market survey 2026"],
+    ["Skilled labour (artisan)", "day", "NGN 10,000 - 20,000", "market survey 2026"],
+    ["Grid electricity (Band A)", "kWh", "NGN 210 - 240", "NERC tariff 2026"],
+    ["Solar PV installed", "kWp", "NGN 900,000 - 1,400,000", "market survey 2026"],
+    ["CAC company registration", "one-time", "NGN 60,000 - 150,000 (incl. agents)", "CAC fee schedule"],
+    ["40ft container clearing, Apapa", "container", "NGN 2.5M - 6M (duty excluded)", "market survey 2026"],
+    ["Borehole drilling", "unit", "NGN 1.5M - 5M", "market survey 2026"],
+    ["Reinforcement steel (12mm)", "tonne", "NGN 950,000 - 1,200,000", "market survey 2026"],
+    ["Commercial bank lending rate", "annual", "28% - 38%", "CBN MPC 2026"],
+    ["Minimum wage", "month", "NGN 70,000", "National Minimum Wage Act 2024"],
+  ];
+  const insPrice = db.prepare(
+    "INSERT OR IGNORE INTO price_index (item, unit, price, country, source) VALUES (?, ?, ?, 'Nigeria', ?)"
+  );
+  const txPrices = db.transaction((items: typeof seedPrices) => {
+    for (const [item, unit, price, source] of items) insPrice.run(item, unit, price, source);
+  });
+  txPrices(seedPrices);
   const insert = db.prepare("INSERT OR IGNORE INTO industries (id, data) VALUES (?, ?)");
   const tx = db.transaction((items: IndustryTemplate[]) => {
     for (const item of items) insert.run(item.id, JSON.stringify(item));
@@ -664,4 +743,194 @@ export function deleteOutreachIndustry(industry: string): number {
   return getDb()
     .prepare("DELETE FROM outreach_domains WHERE industry = ?")
     .run(industry).changes;
+}
+
+export interface PriceEntry {
+  id: number;
+  item: string;
+  unit: string;
+  price: string;
+  country: string;
+  source: string;
+  updatedAt: string;
+}
+
+export function listPrices(country?: string): PriceEntry[] {
+  const d = getDb();
+  const rows = (
+    country
+      ? d.prepare("SELECT * FROM price_index WHERE country = ? ORDER BY item").all(country)
+      : d.prepare("SELECT * FROM price_index ORDER BY country, item").all()
+  ) as { id: number; item: string; unit: string; price: string; country: string; source: string; updated_at: string }[];
+  return rows.map((r) => ({
+    id: r.id,
+    item: r.item,
+    unit: r.unit,
+    price: r.price,
+    country: r.country,
+    source: r.source,
+    updatedAt: r.updated_at,
+  }));
+}
+
+export function upsertPrice(p: { item: string; unit: string; price: string; country: string; source: string }): void {
+  getDb()
+    .prepare(
+      `INSERT INTO price_index (item, unit, price, country, source, updated_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))
+       ON CONFLICT(item, country) DO UPDATE SET
+         unit = excluded.unit, price = excluded.price, source = excluded.source, updated_at = datetime('now')`
+    )
+    .run(p.item, p.unit, p.price, p.country, p.source);
+}
+
+export function deletePrice(id: number): boolean {
+  return getDb().prepare("DELETE FROM price_index WHERE id = ?").run(id).changes > 0;
+}
+
+export interface RegWatchEntry {
+  id: number;
+  regulator: string;
+  url: string;
+  status: string;
+  lastChecked: string;
+  changedAt: string;
+}
+
+export function listRegWatch(): RegWatchEntry[] {
+  const rows = getDb()
+    .prepare("SELECT id, regulator, url, status, last_checked, changed_at FROM reg_watch ORDER BY regulator")
+    .all() as { id: number; regulator: string; url: string; status: string; last_checked: string; changed_at: string }[];
+  return rows.map((r) => ({
+    id: r.id,
+    regulator: r.regulator,
+    url: r.url,
+    status: r.status,
+    lastChecked: r.last_checked,
+    changedAt: r.changed_at,
+  }));
+}
+
+export function seedRegWatch(entries: { regulator: string; url: string }[]): void {
+  const d = getDb();
+  const ins = d.prepare("INSERT OR IGNORE INTO reg_watch (regulator, url) VALUES (?, ?)");
+  const tx = d.transaction((items: typeof entries) => {
+    for (const e of items) ins.run(e.regulator, e.url);
+  });
+  tx(entries);
+}
+
+export function updateRegWatch(id: number, contentHash: string, status: string, changed: boolean): void {
+  getDb()
+    .prepare(
+      `UPDATE reg_watch SET content_hash = ?, status = ?, last_checked = datetime('now')${changed ? ", changed_at = datetime('now')" : ""} WHERE id = ?`
+    )
+    .run(contentHash, status, id);
+}
+
+export function getRegWatchHash(id: number): string {
+  const row = getDb().prepare("SELECT content_hash FROM reg_watch WHERE id = ?").get(id) as
+    | { content_hash: string }
+    | undefined;
+  return row?.content_hash || "";
+}
+
+export function listSubscriptions(userId: number): { id: number; topic: string }[] {
+  return getDb()
+    .prepare("SELECT id, topic FROM subscriptions WHERE user_id = ? ORDER BY topic")
+    .all(userId) as { id: number; topic: string }[];
+}
+
+export function addSubscription(userId: number, topic: string): boolean {
+  return (
+    getDb()
+      .prepare("INSERT OR IGNORE INTO subscriptions (user_id, topic) VALUES (?, ?)")
+      .run(userId, topic).changes > 0
+  );
+}
+
+export function removeSubscription(userId: number, id: number): boolean {
+  return (
+    getDb()
+      .prepare("DELETE FROM subscriptions WHERE id = ? AND user_id = ?")
+      .run(id, userId).changes > 0
+  );
+}
+
+export function getDigest(topic: string, week: string): string | null {
+  const row = getDb()
+    .prepare("SELECT content FROM digests WHERE topic = ? AND week = ?")
+    .get(topic, week) as { content: string } | undefined;
+  return row?.content || null;
+}
+
+export function saveDigest(topic: string, week: string, content: string): void {
+  getDb()
+    .prepare(
+      `INSERT INTO digests (topic, week, content) VALUES (?, ?, ?)
+       ON CONFLICT(topic, week) DO UPDATE SET content = excluded.content`
+    )
+    .run(topic, week, content);
+}
+
+export interface IdeaFeedbackRow {
+  ideaName: string;
+  outcome: string;
+  note: string;
+  createdAt: string;
+}
+
+export function recordIdeaFeedback(userId: number, ideaName: string, outcome: string, note: string): void {
+  getDb()
+    .prepare("INSERT INTO idea_feedback (user_id, idea_name, outcome, note) VALUES (?, ?, ?, ?)")
+    .run(userId, ideaName, outcome, note);
+}
+
+export function listIdeaFeedback(limit = 200): IdeaFeedbackRow[] {
+  const rows = getDb()
+    .prepare("SELECT idea_name, outcome, note, created_at FROM idea_feedback ORDER BY id DESC LIMIT ?")
+    .all(limit) as { idea_name: string; outcome: string; note: string; created_at: string }[];
+  return rows.map((r) => ({
+    ideaName: r.idea_name,
+    outcome: r.outcome,
+    note: r.note,
+    createdAt: r.created_at,
+  }));
+}
+
+export function enrichOutreachDomain(
+  domain: string,
+  data: { siteTitle: string; siteDescription: string; contactEmails: string; contactPhones: string }
+): boolean {
+  return (
+    getDb()
+      .prepare(
+        `UPDATE outreach_domains SET site_title = ?, site_description = ?, contact_emails = ?, contact_phones = ?, enriched_at = datetime('now') WHERE domain = ?`
+      )
+      .run(data.siteTitle, data.siteDescription, data.contactEmails, data.contactPhones, domain).changes > 0
+  );
+}
+
+export function getOutreachEnrichment(domain: string): {
+  siteTitle: string;
+  siteDescription: string;
+  contactEmails: string;
+  contactPhones: string;
+  enrichedAt: string;
+} | null {
+  const row = getDb()
+    .prepare(
+      "SELECT site_title, site_description, contact_emails, contact_phones, enriched_at FROM outreach_domains WHERE domain = ?"
+    )
+    .get(domain) as
+    | { site_title: string; site_description: string; contact_emails: string; contact_phones: string; enriched_at: string }
+    | undefined;
+  if (!row) return null;
+  return {
+    siteTitle: row.site_title,
+    siteDescription: row.site_description,
+    contactEmails: row.contact_emails,
+    contactPhones: row.contact_phones,
+    enrichedAt: row.enriched_at,
+  };
 }

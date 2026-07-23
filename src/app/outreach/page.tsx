@@ -34,6 +34,39 @@ export default function OutreachPage() {
   const [exporting, setExporting] = useState(false);
   const [signInRequired, setSignInRequired] = useState(false);
   const [authed, setAuthed] = useState(false);
+  const [enriching, setEnriching] = useState<string | null>(null);
+  const [enrichments, setEnrichments] = useState<
+    Record<string, { siteTitle: string; siteDescription: string; contactEmails: string; contactPhones: string }>
+  >({});
+
+  async function enrich(domain: string) {
+    if (enriching) return;
+    setEnriching(domain);
+    try {
+      const res = await fetch("/api/outreach/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEnrichments((e) => ({
+          ...e,
+          [domain]: {
+            siteTitle: data.siteTitle || "",
+            siteDescription: data.siteDescription || "",
+            contactEmails: data.contactEmails || "",
+            contactPhones: data.contactPhones || "",
+          },
+        }));
+      } else {
+        setError(data.error || "Enrichment failed");
+      }
+    } catch {
+      setError("Enrichment failed");
+    }
+    setEnriching(null);
+  }
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -255,6 +288,7 @@ export default function OutreachPage() {
                   <tr>
                     <th className="px-4 py-2">Domain</th>
                     <th className="px-4 py-2">Industry</th>
+                    <th className="px-4 py-2"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -270,13 +304,46 @@ export default function OutreachPage() {
                         >
                           {d.domain} ↗
                         </a>
+                        {enrichments[d.domain] && (
+                          <div className="mt-1 text-xs font-normal text-slate-500">
+                            {enrichments[d.domain].siteTitle && (
+                              <p className="font-medium text-slate-600">
+                                {enrichments[d.domain].siteTitle}
+                              </p>
+                            )}
+                            {enrichments[d.domain].siteDescription && (
+                              <p>{enrichments[d.domain].siteDescription}</p>
+                            )}
+                            {enrichments[d.domain].contactEmails && (
+                              <p>✉ {enrichments[d.domain].contactEmails}</p>
+                            )}
+                            {enrichments[d.domain].contactPhones && (
+                              <p>☎ {enrichments[d.domain].contactPhones}</p>
+                            )}
+                            {!enrichments[d.domain].siteTitle &&
+                              !enrichments[d.domain].siteDescription &&
+                              !enrichments[d.domain].contactEmails &&
+                              !enrichments[d.domain].contactPhones && <p>No details found on site</p>}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-2 capitalize text-slate-600">{d.industry}</td>
+                      <td className="px-4 py-2 text-right">
+                        {!enrichments[d.domain] && (
+                          <button
+                            onClick={() => enrich(d.domain)}
+                            disabled={enriching !== null}
+                            className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-40"
+                          >
+                            {enriching === d.domain ? "Enriching…" : "🔍 Enrich"}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {result.domains.length === 0 && (
                     <tr>
-                      <td colSpan={2} className="px-4 py-6 text-center text-slate-500">
+                      <td colSpan={3} className="px-4 py-6 text-center text-slate-500">
                         No domains match — ask the admin to upload domain lists.
                       </td>
                     </tr>

@@ -17,6 +17,27 @@ interface BrainInsights {
   trendingCountries: { country: string; count: number }[];
 }
 
+interface ScenarioImpact {
+  ideaName: string;
+  impact: string;
+  severity: string;
+  adjustedScore: number;
+  mitigations: string[];
+}
+
+interface JurisdictionComparison {
+  comparisons: {
+    jurisdiction: string;
+    regulators: string[];
+    setupCost: string;
+    timeToOperational: string;
+    marketOpportunity: string;
+    keyRisks: string[];
+    easeScore: number;
+  }[];
+  verdict: string;
+}
+
 const COUNTRIES = [
   "Nigeria", "Ghana", "Kenya", "South Africa", "Egypt", "Côte d'Ivoire", "Senegal",
   "Tanzania", "Uganda", "Rwanda", "Ethiopia", "Cameroon", "Benin", "Togo", "Niger Republic",
@@ -117,6 +138,13 @@ export default function IdeasPage() {
   const [deepDiveError, setDeepDiveError] = useState<string | null>(null);
   const [authed, setAuthed] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [scenario, setScenario] = useState("");
+  const [scenarioLoading, setScenarioLoading] = useState(false);
+  const [impacts, setImpacts] = useState<{ scenario: string; impacts: ScenarioImpact[] } | null>(null);
+  const [compareInput, setCompareInput] = useState("");
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [comparison, setComparison] = useState<JurisdictionComparison | null>(null);
+  const [feedbackSent, setFeedbackSent] = useState<Record<string, string>>({});
 
   async function loadSaved() {
     try {
@@ -216,6 +244,69 @@ export default function IdeasPage() {
     }
   }
 
+  async function runScenario() {
+    if (!report || !scenario.trim() || scenarioLoading) return;
+    setScenarioLoading(true);
+    setImpacts(null);
+    try {
+      const res = await fetch("/api/ideas/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scenario: scenario.trim(),
+          country: report.country,
+          ideas: report.ideas.map((i) => ({
+            name: i.name,
+            concept: i.concept,
+            opportunityScore: i.opportunityScore,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) setImpacts(data);
+      else setError(data.error || "Simulation failed");
+    } catch {
+      setError("Simulation failed");
+    }
+    setScenarioLoading(false);
+  }
+
+  async function runCompare() {
+    if (!report || compareLoading) return;
+    const jurisdictions = compareInput
+      .split(/,|\bvs\.?\b/i)
+      .map((j) => j.trim())
+      .filter(Boolean);
+    if (jurisdictions.length < 2) {
+      setError("Enter at least 2 jurisdictions, e.g. Lagos, Nairobi, Accra");
+      return;
+    }
+    setCompareLoading(true);
+    setComparison(null);
+    try {
+      const res = await fetch("/api/ideas/compare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brief: report.brief, jurisdictions }),
+      });
+      const data = await res.json();
+      if (res.ok) setComparison(data);
+      else setError(data.error || "Comparison failed");
+    } catch {
+      setError("Comparison failed");
+    }
+    setCompareLoading(false);
+  }
+
+  async function sendFeedback(ideaName: string, outcome: string) {
+    const res = await fetch("/api/ideas/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ideaName, outcome }),
+    });
+    if (res.ok) setFeedbackSent((f) => ({ ...f, [ideaName]: outcome }));
+  }
+
   if (!authed) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -236,6 +327,9 @@ export default function IdeasPage() {
               <h1 className="text-3xl font-bold tracking-tight">Idea Engine</h1>
             </div>
             <nav className="flex gap-4 text-sm">
+              <a href="/chat" className="text-blue-600 hover:underline">
+                Ask the Brain
+              </a>
               <a href="/outreach" className="text-blue-600 hover:underline">
                 Outreach
               </a>
@@ -378,6 +472,17 @@ export default function IdeasPage() {
                 validate before investment.
               </p>
             )}
+            {!report.locked && (report.refined || (report.groundedIn?.length ?? 0) > 0) && (
+              <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
+                <span className="font-semibold">🧠 Intelligence sources:</span>{" "}
+                {[
+                  ...(report.refined
+                    ? ["multi-pass reasoning (generated → critiqued → refined)"]
+                    : []),
+                  ...(report.groundedIn || []),
+                ].join(" · ")}
+              </div>
+            )}
             <div className="space-y-6">
               {report.ideas.map((idea, n) => (
                 <div key={idea.name} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -424,6 +529,37 @@ export default function IdeasPage() {
                         ? "Building execution playbook…"
                         : "🔍 Go deeper — full execution playbook"}
                     </button>
+                  )}
+                  {!report.locked && (
+                    <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                      {feedbackSent[idea.name] ? (
+                        <span className="text-emerald-600">
+                          ✓ Feedback recorded ({feedbackSent[idea.name]}) — the brain learns from it
+                        </span>
+                      ) : (
+                        <>
+                          <span>Pursued this idea? Tell the brain:</span>
+                          <button
+                            onClick={() => sendFeedback(idea.name, "worked")}
+                            className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700 hover:bg-emerald-100"
+                          >
+                            It worked
+                          </button>
+                          <button
+                            onClick={() => sendFeedback(idea.name, "in-progress")}
+                            className="rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700 hover:bg-blue-100"
+                          >
+                            In progress
+                          </button>
+                          <button
+                            onClick={() => sendFeedback(idea.name, "failed")}
+                            className="rounded-full bg-red-50 px-2 py-0.5 font-medium text-red-700 hover:bg-red-100"
+                          >
+                            It failed
+                          </button>
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
@@ -485,6 +621,145 @@ export default function IdeasPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+            {!report.locked && (
+              <div className="mt-10 space-y-6">
+                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="font-semibold">⚡ Stress-test these ideas</h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    What happens under a shock? e.g. “fuel price doubles”, “naira falls 30%”, “new
+                    import tariff”.
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      value={scenario}
+                      onChange={(e) => setScenario(e.target.value)}
+                      placeholder="Describe a scenario…"
+                      maxLength={300}
+                      className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm"
+                    />
+                    <button
+                      onClick={runScenario}
+                      disabled={scenarioLoading || !scenario.trim()}
+                      className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+                    >
+                      {scenarioLoading ? "Simulating…" : "Run simulation"}
+                    </button>
+                  </div>
+                  {impacts && (
+                    <div className="mt-4 space-y-3">
+                      {impacts.impacts.map((im) => (
+                        <div key={im.ideaName} className="rounded-lg bg-slate-50 p-4 text-sm">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-semibold">{im.ideaName}</span>
+                            <span className="flex items-center gap-2">
+                              {im.severity && (
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                    /severe/i.test(im.severity)
+                                      ? "bg-red-100 text-red-700"
+                                      : /moderate/i.test(im.severity)
+                                        ? "bg-amber-100 text-amber-700"
+                                        : "bg-emerald-100 text-emerald-700"
+                                  }`}
+                                >
+                                  {im.severity}
+                                </span>
+                              )}
+                              {im.adjustedScore > 0 && (
+                                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                  score → {im.adjustedScore}/100
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          {im.impact && <p className="mt-2 text-slate-700">{im.impact}</p>}
+                          {im.mitigations.length > 0 && (
+                            <ul className="mt-2 list-disc pl-5 text-slate-600">
+                              {im.mitigations.map((m) => (
+                                <li key={m}>{m}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="font-semibold">🌍 Compare jurisdictions</h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Where should this be built? Enter 2–4 places, e.g. “Lagos, Nairobi, Accra”.
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      value={compareInput}
+                      onChange={(e) => setCompareInput(e.target.value)}
+                      placeholder="Lagos, Nairobi, Accra"
+                      maxLength={200}
+                      className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm"
+                    />
+                    <button
+                      onClick={runCompare}
+                      disabled={compareLoading || !compareInput.trim()}
+                      className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+                    >
+                      {compareLoading ? "Comparing…" : "Compare"}
+                    </button>
+                  </div>
+                  {comparison && (
+                    <div className="mt-4">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {comparison.comparisons.map((c) => (
+                          <div key={c.jurisdiction} className="rounded-lg bg-slate-50 p-4 text-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold">{c.jurisdiction}</span>
+                              {c.easeScore > 0 && (
+                                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                  ease {c.easeScore}/100
+                                </span>
+                              )}
+                            </div>
+                            {c.setupCost && (
+                              <p className="mt-2">
+                                <span className="font-semibold">Setup cost:</span>{" "}
+                                <span className="text-slate-600">{c.setupCost}</span>
+                              </p>
+                            )}
+                            {c.timeToOperational && (
+                              <p>
+                                <span className="font-semibold">Time to operational:</span>{" "}
+                                <span className="text-slate-600">{c.timeToOperational}</span>
+                              </p>
+                            )}
+                            {c.marketOpportunity && (
+                              <p>
+                                <span className="font-semibold">Market:</span>{" "}
+                                <span className="text-slate-600">{c.marketOpportunity}</span>
+                              </p>
+                            )}
+                            {c.regulators.length > 0 && (
+                              <p className="mt-1 text-xs text-slate-500">
+                                Regulators: {c.regulators.join(", ")}
+                              </p>
+                            )}
+                            {c.keyRisks.length > 0 && (
+                              <p className="mt-1 text-xs text-slate-500">
+                                Risks: {c.keyRisks.join("; ")}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {comparison.verdict && (
+                        <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                          <span className="font-semibold">Verdict:</span> {comparison.verdict}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

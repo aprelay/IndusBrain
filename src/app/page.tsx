@@ -294,6 +294,12 @@ export default function Home() {
             </div>
             <nav className="flex items-center gap-2 text-sm">
               <a
+                href="/chat"
+                className="rounded-lg px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-100"
+              >
+                🧠 Ask the Brain
+              </a>
+              <a
                 href="/ideas"
                 className="rounded-lg px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-100"
               >

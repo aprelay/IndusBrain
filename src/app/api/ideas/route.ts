@@ -7,7 +7,9 @@ import {
   saveIdeaReport,
 } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
-import { buildMemoryContext, rememberIdeaReport } from "@/lib/brain";
+import { rememberIdeaReport } from "@/lib/brain";
+import { computeOpportunityScore } from "@/lib/intelligence";
+import { buildFullContext } from "@/lib/superintel";
 
 const MAX_REQUEST_LENGTH = 500;
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -83,8 +85,15 @@ export async function POST(req: NextRequest) {
     );
   }
   const country = typeof body?.country === "string" ? body.country.trim().slice(0, 60) : "";
-  const memoryContext = buildMemoryContext(brief);
-  const report = await generateIdeas(brief, country || undefined, memoryContext || undefined);
+  const grounding = buildFullContext(brief, country || undefined);
+  const report = await generateIdeas(brief, country || undefined, grounding.context || undefined);
+  if (report) {
+    report.ideas = report.ideas.map((i) => ({
+      ...i,
+      opportunityScore: computeOpportunityScore(i, brief),
+    }));
+    report.groundedIn = grounding.citations;
+  }
   if (!report) {
     return NextResponse.json(
       { error: "Idea Engine unavailable — AI is not configured or the request failed" },

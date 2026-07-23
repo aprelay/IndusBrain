@@ -73,7 +73,7 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<
-    "industries" | "quotes" | "users" | "companies" | "outreach" | "apikeys" | "alerts" | "audit" | "credits"
+    "industries" | "quotes" | "users" | "companies" | "outreach" | "apikeys" | "alerts" | "audit" | "credits" | "prices" | "regwatch"
   >("industries");
 
   const [industriesJson, setIndustriesJson] = useState<IndustryTemplate[]>([]);
@@ -105,6 +105,14 @@ export default function AdminPage() {
   const [apiKeyCredits, setApiKeyCredits] = useState("100");
   const [newKey, setNewKey] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [prices, setPrices] = useState<
+    { id: number; item: string; unit: string; price: string; country: string; source: string; updatedAt: string }[]
+  >([]);
+  const [priceForm, setPriceForm] = useState({ item: "", unit: "", price: "", country: "Nigeria", source: "" });
+  const [regWatch, setRegWatch] = useState<
+    { id: number; regulator: string; url: string; status: string; lastChecked: string; changedAt: string }[]
+  >([]);
+  const [regWatchRunning, setRegWatchRunning] = useState(false);
 
   const headers = { "Content-Type": "application/json", "x-admin-code": code };
 
@@ -133,6 +141,61 @@ export default function AdminPage() {
     setApiKeys(k);
     setOutreachStats(os);
     setAuthed(true);
+    fetch("/api/prices", { headers })
+      .then((r) => r.json())
+      .then((d: { prices?: typeof prices }) => setPrices(d.prices || []))
+      .catch(() => {});
+    fetch("/api/admin/regwatch", { headers })
+      .then((r) => r.json())
+      .then((d: { watchlist?: typeof regWatch }) => setRegWatch(d.watchlist || []))
+      .catch(() => {});
+  }
+
+  async function savePrice() {
+    setStatus(null);
+    const res = await fetch("/api/prices", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(priceForm),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setStatus(data.error || "Failed to save price");
+      return;
+    }
+    setPrices(data.prices || []);
+    setPriceForm({ item: "", unit: "", price: "", country: "Nigeria", source: "" });
+    setStatus("Price saved");
+  }
+
+  async function removePrice(id: number) {
+    const res = await fetch("/api/prices", {
+      method: "DELETE",
+      headers,
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    if (res.ok) setPrices(data.prices || []);
+  }
+
+  async function runRegWatch() {
+    setRegWatchRunning(true);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/admin/regwatch", { method: "POST", headers });
+      const data = await res.json();
+      if (res.ok) {
+        setRegWatch(data.watchlist || []);
+        setStatus(
+          `Checked ${data.checked} regulator pages — ${data.changed?.length ? `CHANGES at: ${data.changed.join(", ")}` : "no changes detected"}`
+        );
+      } else {
+        setStatus(data.error || "Check failed");
+      }
+    } catch {
+      setStatus("Check failed");
+    }
+    setRegWatchRunning(false);
   }
 
   async function saveIndustry() {
@@ -387,13 +450,13 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold">IndusBrain Admin</h1>
         </div>
         <div className="mt-4 flex gap-2">
-          {(["industries", "quotes", "users", "companies", "outreach", "apikeys", "alerts", "audit", "credits"] as const).map((t) => (
+          {(["industries", "quotes", "users", "companies", "outreach", "apikeys", "prices", "regwatch", "alerts", "audit", "credits"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`rounded-lg px-4 py-2 text-sm font-medium capitalize ${tab === t ? "bg-blue-600 text-white" : "border border-slate-300 bg-white"}`}
             >
-              {t === "apikeys" ? "API keys" : t}
+              {t === "apikeys" ? "API keys" : t === "regwatch" ? "Reg watch" : t}
               {t === "alerts" && alerts.length > 0 && (
                 <span className="ml-1 rounded-full bg-red-600 px-1.5 text-xs text-white">
                   {alerts.length}
@@ -558,6 +621,124 @@ export default function AdminPage() {
                 )}
               </ul>
             </div>
+          </div>
+        )}
+
+        {tab === "prices" && (
+          <div className="mt-6">
+            <h2 className="font-semibold">Price intelligence ({prices.length})</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Verified local costs fed into every idea report, deep dive, chat answer and
+              simulation — keep these current so the brain uses real numbers.
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-5">
+              <input
+                value={priceForm.item}
+                onChange={(e) => setPriceForm((f) => ({ ...f, item: e.target.value }))}
+                placeholder="Item, e.g. Cement (50kg bag)"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
+              />
+              <input
+                value={priceForm.price}
+                onChange={(e) => setPriceForm((f) => ({ ...f, price: e.target.value }))}
+                placeholder="Price, e.g. NGN 9,500"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+              <input
+                value={priceForm.unit}
+                onChange={(e) => setPriceForm((f) => ({ ...f, unit: e.target.value }))}
+                placeholder="Unit (optional)"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+              <input
+                value={priceForm.country}
+                onChange={(e) => setPriceForm((f) => ({ ...f, country: e.target.value }))}
+                placeholder="Country"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="mt-2 flex gap-2">
+              <input
+                value={priceForm.source}
+                onChange={(e) => setPriceForm((f) => ({ ...f, source: e.target.value }))}
+                placeholder="Source (optional)"
+                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+              <button
+                onClick={savePrice}
+                disabled={!priceForm.item.trim() || !priceForm.price.trim()}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                Save price
+              </button>
+            </div>
+            <ul className="mt-4 space-y-2">
+              {prices.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm"
+                >
+                  <span>
+                    <span className="font-medium">{p.item}</span> — {p.price}
+                    {p.unit ? ` per ${p.unit}` : ""} <span className="text-slate-400">[{p.country}]</span>
+                  </span>
+                  <button onClick={() => removePrice(p.id)} className="text-red-600 hover:underline">
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {tab === "regwatch" && (
+          <div className="mt-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-semibold">Regulatory watch ({regWatch.length} regulator pages)</h2>
+              <button
+                onClick={runRegWatch}
+                disabled={regWatchRunning}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {regWatchRunning ? "Checking…" : "🔎 Check 15 pages now"}
+              </button>
+            </div>
+            <p className="mt-1 text-sm text-slate-600">
+              Monitors the official pages of every regulator in the curated blueprints and flags
+              when their content changes — run checks regularly to keep blueprints current.
+            </p>
+            <ul className="mt-4 space-y-2">
+              {regWatch.map((w) => (
+                <li
+                  key={w.id}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm"
+                >
+                  <span className="min-w-0">
+                    <span className="font-medium">{w.regulator}</span>{" "}
+                    <a
+                      href={w.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="break-all text-xs text-blue-600 hover:underline"
+                    >
+                      {w.url}
+                    </a>
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                      w.status === "changed"
+                        ? "bg-red-100 text-red-700"
+                        : w.status === "ok"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-slate-100 text-slate-500"
+                    }`}
+                    title={w.lastChecked ? `Last checked ${w.lastChecked}` : "Not checked yet"}
+                  >
+                    {w.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
