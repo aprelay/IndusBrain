@@ -486,23 +486,23 @@ export default function IdeasPage() {
             <div className="space-y-6">
               {report.ideas.map((idea, n) => (
                 <div key={idea.name} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-lg font-bold">
-                      {n + 1}. {idea.name}
-                    </h3>
-                    <div className="flex shrink-0 flex-wrap justify-end gap-2">
-                    {idea.opportunityScore > 0 && (
-                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                        Opportunity: {idea.opportunityScore}/100
-                      </span>
-                    )}
-                    {idea.confidence && (
-                      <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-                        Confidence: {idea.confidence}
-                      </span>
-                    )}
+                  <h3 className="text-lg font-bold">
+                    {n + 1}. {idea.name}
+                  </h3>
+                  {(idea.opportunityScore > 0 || idea.confidence) && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {idea.opportunityScore > 0 && (
+                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                          Opportunity: {idea.opportunityScore}/100
+                        </span>
+                      )}
+                      {idea.confidence && (
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                          Confidence: {idea.confidence}
+                        </span>
+                      )}
                     </div>
-                  </div>
+                  )}
                   <p className="mt-2 text-slate-700">{idea.concept}</p>
                   <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
                     <Field label="Target market" value={idea.targetMarket} />
