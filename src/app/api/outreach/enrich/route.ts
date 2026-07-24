@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { enrichOutreachDomain, getOutreachEnrichment } from "@/lib/db";
+import { consumeUserCredit, enrichOutreachDomain, getOutreachEnrichment } from "@/lib/db";
 import { fetchDomainEnrichment } from "@/lib/superintel";
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -38,7 +38,19 @@ export async function POST(req: NextRequest) {
   if (existing === null) {
     return NextResponse.json({ error: "Domain not in the Outreach database" }, { status: 404 });
   }
+  const billingEnabled = process.env.BILLING_ENABLED === "true";
+  const chargeForLeads = (leads: { contactEmails: string; contactPhones: string }): boolean => {
+    if (!billingEnabled || user.role === "admin") return true;
+    if (!leads.contactEmails && !leads.contactPhones) return true;
+    return consumeUserCredit(user.id);
+  };
   if (existing.enrichedAt) {
+    if (!chargeForLeads(existing)) {
+      return NextResponse.json(
+        { error: "Contact leads found for this domain — 1 credit is required to view them", creditsRequired: true },
+        { status: 402 }
+      );
+    }
     return NextResponse.json({ domain, ...existing, cached: true });
   }
   const data = await fetchDomainEnrichment(domain);
@@ -46,5 +58,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Website unreachable — could not enrich" }, { status: 502 });
   }
   enrichOutreachDomain(domain, data);
+  if (!chargeForLeads(data)) {
+    return NextResponse.json(
+      { error: "Contact leads found for this domain — 1 credit is required to view them", creditsRequired: true },
+      { status: 402 }
+    );
+  }
   return NextResponse.json({ domain, ...data, cached: false });
 }

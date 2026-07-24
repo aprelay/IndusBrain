@@ -334,6 +334,7 @@ export default function OutreachPage() {
                             onClick={() => enrich(d.domain)}
                             disabled={enriching !== null}
                             className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-40"
+                            title="Reads the site's public details. 1 credit if contact leads (email/phone) are found — free otherwise"
                           >
                             {enriching === d.domain ? "Enriching…" : "🔍 Enrich"}
                           </button>
