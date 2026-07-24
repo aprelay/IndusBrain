@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { consumeUserCredit, enrichOutreachDomain, getOutreachEnrichment } from "@/lib/db";
+import {
+  consumeUserCredit,
+  enrichOutreachDomain,
+  getOutreachDomainById,
+  getOutreachEnrichment,
+} from "@/lib/db";
 import { fetchDomainEnrichment } from "@/lib/superintel";
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -29,10 +34,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Please sign in.", signInRequired: true }, { status: 401 });
   }
   const body = await req.json().catch(() => null);
-  const domain =
+  let domain =
     typeof body?.domain === "string" ? body.domain.trim().toLowerCase().slice(0, 200) : "";
+  if (!domain && typeof body?.id === "number" && Number.isInteger(body.id)) {
+    domain = getOutreachDomainById(body.id)?.domain || "";
+  }
   if (!domain || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) {
-    return NextResponse.json({ error: "Requires a valid 'domain'" }, { status: 400 });
+    return NextResponse.json({ error: "Requires a valid 'domain' or 'id'" }, { status: 400 });
   }
   const existing = getOutreachEnrichment(domain);
   if (existing === null) {

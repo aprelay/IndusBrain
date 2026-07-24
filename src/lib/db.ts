@@ -608,6 +608,13 @@ export function bulkInsertOutreachDomains(
   return added;
 }
 
+export function getOutreachDomainById(id: number): OutreachDomain | null {
+  const row = getDb()
+    .prepare("SELECT id, domain, industry FROM outreach_domains WHERE id = ?")
+    .get(id) as OutreachDomain | undefined;
+  return row || null;
+}
+
 export function searchOutreachDomains(
   industry: string,
   query: string,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
+import { addUserCredits, consumeUserCredit } from "@/lib/db";
 import { askBrain } from "@/lib/superintel";
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -43,8 +44,17 @@ export async function POST(req: NextRequest) {
           content: m.content.slice(0, 2000),
         }))
     : [];
+  const billingEnabled = process.env.BILLING_ENABLED === "true";
+  const charged = billingEnabled && user.role !== "admin";
+  if (charged && !consumeUserCredit(user.id)) {
+    return NextResponse.json(
+      { error: "Asking the Brain costs 1 credit per question — please purchase credits.", creditsRequired: true },
+      { status: 402 }
+    );
+  }
   const result = await askBrain(question, history);
   if (!result) {
+    if (charged) addUserCredits(user.email, 1);
     return NextResponse.json({ error: "The Brain is unavailable right now" }, { status: 503 });
   }
   return NextResponse.json(result);

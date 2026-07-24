@@ -8,6 +8,13 @@ import { clientIp, isRateLimited, incrementDailyCount } from "@/lib/security";
 export const dynamic = "force-dynamic";
 
 const PER_PAGE = 50;
+
+function maskDomain(domain: string): string {
+  const dot = domain.indexOf(".");
+  const name = dot > 0 ? domain.slice(0, dot) : domain;
+  const rest = dot > 0 ? domain.slice(dot) : "";
+  return `${name.slice(0, 2)}••••••${rest}`;
+}
 const SEARCHES_PER_MINUTE = 30;
 const FREE_PAGES_PER_DAY = 30;
 
@@ -53,11 +60,15 @@ export async function GET(req: NextRequest) {
   const query = (params.get("q") || "").trim().toLowerCase().slice(0, 100);
   const page = Math.max(1, Number(params.get("page")) || 1);
   const { total, domains } = searchOutreachDomains(industry, query, page, PER_PAGE);
+  const reveal = isAdmin || user?.role === "admin";
   return NextResponse.json({
     total,
     page,
     perPage: PER_PAGE,
     pages: Math.max(1, Math.ceil(total / PER_PAGE)),
-    domains,
+    masked: !reveal,
+    domains: reveal
+      ? domains
+      : domains.map((d) => ({ id: d.id, domain: maskDomain(d.domain), industry: d.industry })),
   });
 }

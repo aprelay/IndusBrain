@@ -14,6 +14,7 @@ interface SearchResult {
   page: number;
   perPage: number;
   pages: number;
+  masked?: boolean;
   domains: DomainRow[];
 }
 
@@ -34,25 +35,30 @@ export default function OutreachPage() {
   const [exporting, setExporting] = useState(false);
   const [signInRequired, setSignInRequired] = useState(false);
   const [authed, setAuthed] = useState(false);
-  const [enriching, setEnriching] = useState<string | null>(null);
+  const [enriching, setEnriching] = useState<number | null>(null);
   const [enrichments, setEnrichments] = useState<
-    Record<string, { siteTitle: string; siteDescription: string; contactEmails: string; contactPhones: string }>
+    Record<
+      number,
+      { domain: string; siteTitle: string; siteDescription: string; contactEmails: string; contactPhones: string }
+    >
   >({});
 
-  async function enrich(domain: string) {
+  async function enrich(row: DomainRow) {
     if (enriching) return;
-    setEnriching(domain);
+    setEnriching(row.id);
+    setError(null);
     try {
       const res = await fetch("/api/outreach/enrich", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain }),
+        body: JSON.stringify({ id: row.id }),
       });
       const data = await res.json();
       if (res.ok) {
         setEnrichments((e) => ({
           ...e,
-          [domain]: {
+          [row.id]: {
+            domain: data.domain || row.domain,
             siteTitle: data.siteTitle || "",
             siteDescription: data.siteDescription || "",
             contactEmails: data.contactEmails || "",
@@ -292,56 +298,59 @@ export default function OutreachPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {result.domains.map((d) => (
+                  {result.domains.map((d) => {
+                    const info = enrichments[d.id];
+                    const shownDomain = info?.domain || d.domain;
+                    const revealed = Boolean(info) || !result.masked;
+                    return (
                     <tr key={d.id}>
                       <td className="px-4 py-2 font-medium">
-                        <a
-                          href={`/api/outreach/visit?domain=${encodeURIComponent(d.domain)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                          title={`Open ${d.domain} in a new tab`}
-                        >
-                          {d.domain} ↗
-                        </a>
-                        {enrichments[d.domain] && (
+                        {revealed ? (
+                          <a
+                            href={`/api/outreach/visit?domain=${encodeURIComponent(shownDomain)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                            title={`Open ${shownDomain} in a new tab`}
+                          >
+                            {shownDomain} ↗
+                          </a>
+                        ) : (
+                          <span className="select-none tracking-wider text-slate-400" title="Click Enrich to reveal this domain">
+                            {d.domain}
+                          </span>
+                        )}
+                        {info && (
                           <div className="mt-1 text-xs font-normal text-slate-500">
-                            {enrichments[d.domain].siteTitle && (
-                              <p className="font-medium text-slate-600">
-                                {enrichments[d.domain].siteTitle}
-                              </p>
+                            {info.siteTitle && (
+                              <p className="font-medium text-slate-600">{info.siteTitle}</p>
                             )}
-                            {enrichments[d.domain].siteDescription && (
-                              <p>{enrichments[d.domain].siteDescription}</p>
-                            )}
-                            {enrichments[d.domain].contactEmails && (
-                              <p>✉ {enrichments[d.domain].contactEmails}</p>
-                            )}
-                            {enrichments[d.domain].contactPhones && (
-                              <p>☎ {enrichments[d.domain].contactPhones}</p>
-                            )}
-                            {!enrichments[d.domain].siteTitle &&
-                              !enrichments[d.domain].siteDescription &&
-                              !enrichments[d.domain].contactEmails &&
-                              !enrichments[d.domain].contactPhones && <p>No details found on site</p>}
+                            {info.siteDescription && <p>{info.siteDescription}</p>}
+                            {info.contactEmails && <p>✉ {info.contactEmails}</p>}
+                            {info.contactPhones && <p>☎ {info.contactPhones}</p>}
+                            {!info.siteTitle &&
+                              !info.siteDescription &&
+                              !info.contactEmails &&
+                              !info.contactPhones && <p>No details found on site</p>}
                           </div>
                         )}
                       </td>
                       <td className="px-4 py-2 capitalize text-slate-600">{d.industry}</td>
                       <td className="px-4 py-2 text-right">
-                        {!enrichments[d.domain] && (
+                        {!info && (
                           <button
-                            onClick={() => enrich(d.domain)}
+                            onClick={() => enrich(d)}
                             disabled={enriching !== null}
                             className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-40"
-                            title="Reads the site's public details. 1 credit if contact leads (email/phone) are found — free otherwise"
+                            title="Reveals the domain and its public details. 1 credit if contact leads (email/phone) are found — free otherwise"
                           >
-                            {enriching === d.domain ? "Enriching…" : "🔍 Enrich"}
+                            {enriching === d.id ? "Enriching…" : "🔍 Enrich"}
                           </button>
                         )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {result.domains.length === 0 && (
                     <tr>
                       <td colSpan={3} className="px-4 py-6 text-center text-slate-500">
