@@ -330,6 +330,9 @@ export default function IdeasPage() {
               <a href="/chat" className="text-blue-600 hover:underline">
                 Ask the Brain
               </a>
+              <a href="/sme" className="text-blue-600 hover:underline">
+                Grow my business
+              </a>
               <a href="/outreach" className="text-blue-600 hover:underline">
                 Outreach
               </a>

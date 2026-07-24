@@ -189,6 +189,9 @@ export default function ChatPage() {
             <a href="/ideas" className="rounded-lg px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-100">
               💡 Idea Engine
             </a>
+            <a href="/sme" className="rounded-lg px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-100">
+              📈 Grow my business
+            </a>
             <a href="/outreach" className="rounded-lg px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-100">
               📡 Outreach
             </a>

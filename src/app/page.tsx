@@ -300,6 +300,12 @@ export default function Home() {
                 🧠 Ask the Brain
               </a>
               <a
+                href="/sme"
+                className="rounded-lg px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-100"
+              >
+                📈 Grow my business
+              </a>
+              <a
                 href="/ideas"
                 className="rounded-lg px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-100"
               >

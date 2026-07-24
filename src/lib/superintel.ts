@@ -7,6 +7,7 @@ import {
   listIdeaFeedback,
   listPrices,
   listRegWatch,
+  outreachIndustryStats,
   saveDigest,
   seedRegWatch,
   updateRegWatch,
@@ -231,6 +232,47 @@ const CRITIQUE_SYSTEM_PROMPT = `You are the document-critique engine of an indus
 export async function critiqueDocument(text: string): Promise<string | null> {
   const { context } = buildFullContext(text.slice(0, 500));
   return aiCall(CRITIQUE_SYSTEM_PROMPT, `Document to critique:\n\n${text.slice(0, 24000)}${context}`, 0.4, false);
+}
+
+const IMPROVE_SYSTEM_PROMPT = `You are the SME competitiveness engine of an industry-ecosystem intelligence platform with deep Nigeria/West Africa market and regulatory knowledge. The user describes their EXISTING business and its challenges. Produce a practical competitiveness improvement report grounded in the PLATFORM PROPRIETARY DATA (verified prices, company density, regulators, real client outcomes) where provided. Be concrete, numeric and jurisdiction-specific. Respond in plain markdown with these sections: ## Diagnosis (what is really holding this business back), ## Cost & pricing benchmarks (compare their cost structure to verified local prices), ## Competitive landscape (use the company-density data), ## Differentiation moves (specific, ranked), ## New revenue lines from existing assets, ## Expansion opportunities in the surrounding value chain, ## 90-day action plan (week-by-week). Not JSON.`;
+
+export async function improveBusiness(
+  business: string,
+  country?: string
+): Promise<{ report: string; citations: string[] } | null> {
+  const { context, citations } = buildFullContext(business, country);
+  const stats = outreachIndustryStats().slice(0, 40);
+  const density = stats.length
+    ? `\n\nCOMPANY DENSITY IN OUR CLASSIFIED DATABASE (real registered companies per industry):\n${stats
+        .map((s) => `- ${s.industry}: ${s.count} companies`)
+        .join("\n")}`
+    : "";
+  const report = await aiCall(
+    IMPROVE_SYSTEM_PROMPT,
+    `Existing business to improve:\n${business}${country ? `\nCountry/market: ${country}` : ""}${context}${density}`,
+    0.5,
+    false
+  );
+  if (!report) return null;
+  if (density) citations.push("Outreach database: real company density by industry");
+  return { report, citations };
+}
+
+const HEALTHCHECK_SYSTEM_PROMPT = `You are the SME health-check and benchmarking engine of an industry-ecosystem intelligence platform with deep Nigeria/West Africa knowledge. The user provides their business type and basic financials (revenue, costs, key cost items or prices they pay). Benchmark them against the verified PRICE INTELLIGENCE and industry norms: margin health, whether they are over-paying for inputs versus verified local prices, pricing power, cost structure red flags. Score each area and be honest. Respond in plain markdown with sections: ## Overall health score (x/100 with one-line verdict), ## Margin analysis, ## Input cost benchmarks (line by line vs verified prices, flag overpayment), ## Pricing check, ## Red flags, ## Quick wins (ranked by impact), ## What healthy looks like (target numbers for this business type). Not JSON.`;
+
+export async function smeHealthCheck(
+  input: string,
+  country?: string
+): Promise<{ report: string; citations: string[] } | null> {
+  const { context, citations } = buildFullContext(input, country);
+  const report = await aiCall(
+    HEALTHCHECK_SYSTEM_PROMPT,
+    `Business to health-check:\n${input}${country ? `\nCountry/market: ${country}` : ""}${context}`,
+    0.4,
+    false
+  );
+  if (!report) return null;
+  return { report, citations };
 }
 
 const DIGEST_SYSTEM_PROMPT = `You are the weekly industry-intelligence digest writer of an industry-ecosystem platform (deep Nigeria/West Africa knowledge). Given a topic/industry and platform data, write a concise weekly digest: current opportunities, regulatory notes, cost/market signals, and 2-3 concrete moves a business in this space should consider this week. Plain markdown with short sections. Not JSON.`;
